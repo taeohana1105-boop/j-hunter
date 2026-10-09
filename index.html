@@ -170,7 +170,12 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const pct=v=>(v*100).toFixed(v<0.1?1:0)+'%';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const getB=id=>S.boards.find(b=>b.id===id);
-const hitName=(b,n)=>pad(n)+(b.labels&&b.labels[n-1]?' '+b.labels[n-1]:'');
+/* ===== เลขฮิต: เรียง 001..N หรือระบุเอง (เช่น 065, 095, 101) ===== */
+function hitList(b){return Array.isArray(b.hitNums)&&b.hitNums.length?b.hitNums.slice().sort((a,c)=>a-c):Array.from({length:b.hitCount||0},(_,i)=>i+1)}
+const hitLabel=(b,n)=>{const i=hitList(b).indexOf(n);return i>=0&&b.labels&&b.labels[i]?b.labels[i]:''};
+const hitName=(b,n)=>pad(n)+(hitLabel(b,n)?' '+hitLabel(b,n):'');
+function hitRangeText(b){const h=hitList(b);if(!(b.hitNums&&b.hitNums.length))return `001–${pad(h.length)}`;return h.length>8?h.slice(0,6).map(pad).join(', ')+` … (${h.length} ใบ)`:h.map(pad).join(', ')}
+function parseNums(t,max){return [...new Set(String(t||'').split(/[^0-9]+/).filter(Boolean).map(Number).filter(n=>n>=1&&n<=max))].sort((a,c)=>a-c)}
 function seqOf(b){
   if(!Array.isArray(b.seq))b.seq=[];
   // เก็บกวาดข้อมูลจากเวอร์ชันเก่า: ตัดรายการที่ไม่มีซองจริง และเติมซองที่เปิดแล้วแต่ตกหล่น
@@ -182,21 +187,29 @@ function seqOf(b){
 
 /* ===== ค่าของซอง: เลขที่ออก (ฮิต = 1..hitCount, เกลือ = hitCount+1..total) ===== */
 function val(o){if(!o)return null;if(o.v!==undefined)return o.v;if(o.type==='hit')return o.hit;return null}
-const isHitV=(b,v)=>v!=null&&v<=b.hitCount;
+const isHitV=(b,v)=>v!=null&&hitList(b).includes(v);
 function obsOf(b){return Object.entries(b.opened).map(([k,o])=>({pos:+k,v:val(o)})).filter(o=>o.v!=null)}
-function foundHits(b){return obsOf(b).filter(o=>o.v<=b.hitCount).map(o=>({n:o.v,pos:o.pos}))}
+function foundHits(b){return obsOf(b).filter(o=>isHitV(b,o.v)).map(o=>({n:o.v,pos:o.pos}))}
 function usedNums(b){return new Map(obsOf(b).map(o=>[o.v,o.pos]))}
 function numLabel(b,v){return v==null?'เกลือ (ไม่รู้เลข)':isHitV(b,v)?'★ '+pad(v):pad(v)}
 
 /* ===== กล่อง / นับตำแหน่ง ===== */
-function boxes(b){const n=Math.ceil(b.total/PER),per=Math.ceil(b.total/n);return Array.from({length:n},(_,i)=>({i,from:i*per+1,to:Math.min(b.total,(i+1)*per)}))}
+function boxes(b){
+  let n=b.boxN>0?b.boxN:0,per=b.boxPer>0?b.boxPer:0;
+  if(!n&&!per)n=Math.ceil(b.total/PER);
+  if(n&&!per)per=Math.ceil(b.total/n);
+  if(per&&!n)n=Math.ceil(b.total/per);
+  if(n*per<b.total)per=Math.ceil(b.total/n);
+  const out=[];for(let i=0;i<n;i++){const from=i*per+1,to=Math.min(b.total,(i+1)*per);if(from<=to)out.push({i:out.length,from,to})}
+  return out;
+}
 function boxOf(b,x){return boxes(b).find(bx=>x>=bx.from&&x<=bx.to)}
 /* ลำดับซองจริงในกล่องตอนนี้ (เก็บเป็นตำแหน่งเดิมของซอง)
    โหมดเติมซอง: หยิบซองออกแล้วร้านเอาซองขวาสุดของกล่องมาเติมให้ช่อง (กระดาษกั้น) เต็มเหมือนเดิม
    คำนวณใหม่จากลำดับที่จดทุกครั้ง จึงแก้/ย้อนกลับได้เสมอ */
 let _po={k:null,v:null};
 function physOrder(b){
-  const seq=seqOf(b),k=[b.id,b.total,b.refill?1:0,b.sec||0,b.refillAt||'gap',seq.join(','),Object.keys(b.opened).join(',')].join('|');
+  const seq=seqOf(b),k=[b.id,b.total,b.boxN||0,b.boxPer||0,b.refill?1:0,b.sec||0,b.refillAt||'gap',seq.join(','),Object.keys(b.opened).join(',')].join('|');
   if(_po.k===k)return _po.v;
   const mv=new Set();
   const BX=boxes(b),arr=BX.map(bx=>{const a=[];for(let x=bx.from;x<=bx.to;x++)a.push(x);return a});
@@ -303,7 +316,7 @@ function model(b){
     for(let i=0;i<U;i++)p[i]=M*p[i]/tot+(1-M)/U;
     return{p,M};
   }
-  const remHits=unseen.filter(u=>u<=b.hitCount);
+  const HL=new Set(hitList(b)),remHits=unseen.filter(u=>HL.has(u));
   const H=remHits.length,base=U?Math.min(1,H/U):0;
   const miss=new Float64Array(U).fill(1),perHit=[];
   remHits.forEach(u=>{
@@ -446,7 +459,7 @@ function renderShop(){setTimeout(()=>window.paintSync&&paintSync(),0);
   ${cl.length?`<h3>ปิดแล้ว (${cl.length})</h3>${cl.map(b=>boardCard(b,null)).join('')}`:''}`;
 }
 function boardCard(b,c){
-  const f=foundHits(b).length,o=Object.keys(b.opened).length,U=b.total-o,H=b.hitCount-f;
+  const f=foundHits(b).length,o=Object.keys(b.opened).length,U=b.total-o,H=hitList(b).length-f;
   let right='';
   if(!b.closed&&c&&c.R.U){
     const best=c.best;
@@ -456,9 +469,9 @@ function boardCard(b,c){
   }
   return `<button class="card click" onclick="openBoard('${b.id}')">
     <div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="t">${esc(b.name)}${b.closed?'<span class="pill">ปิดแล้ว</span>':''}</div>
-    <div class="muted small num" style="margin-top:2px">${b.total} ซอง · ฮิต 001–${pad(b.hitCount)}${b.refill?' · เติมซอง':''}</div></div>${right}</div>
+    <div class="muted small num" style="margin-top:2px">${b.total} ซอง${boxes(b).length>1?` (${boxes(b).length} กล่อง)`:''} · ฮิต ${hitRangeText(b)}${b.refill?' · เติมซอง':''}</div></div>${right}</div>
     <div class="progress"><i style="width:${(o/b.total*100).toFixed(1)}%"></i></div>
-    <div class="muted small num">เหลือ ${U}/${b.total} ซอง · ฮิตเหลือ ${H}/${b.hitCount}${b.closed?'':` · จดแล้ว ${o} ซอง`}</div></button>`;
+    <div class="muted small num">เหลือ ${U}/${b.total} ซอง · ฮิตเหลือ ${H}/${hitList(b).length}${b.closed?'':` · จดแล้ว ${o} ซอง`}</div></button>`;
 }
 
 /* ===== สร้างกระดาน ===== */
@@ -472,14 +485,22 @@ function openNew(preShop){
   <label class="f">จำนวนซอง (= เลข 001 ถึงเลขนี้)</label>
   <div class="segT" id="segT">${[99,100,119,150].map(v=>`<button class="btn ${v===100?'on':''}" onclick="pickT(${v})">${v}</button>`).join('')}</div>
   <input class="in" id="nTotal" type="number" inputmode="numeric" min="5" max="500" value="100" style="margin-top:6px" oninput="NB.total=+this.value;markSeg()">
-  <p class="note" style="margin-top:4px">เกิน 100 ซองจะแบ่งเป็นหลายกล่องเท่า ๆ กัน (นับซ้าย/ขวาแยกต่อกล่อง)</p>
+  <div class="row" style="gap:10px;margin-top:4px">
+    <div style="flex:1;min-width:120px"><label class="f">จำนวนกล่อง</label><input class="in" id="nBoxN" type="number" inputmode="numeric" min="1" max="10" placeholder="อัตโนมัติ"></div>
+    <div style="flex:1;min-width:120px"><label class="f">ซองต่อกล่อง</label><input class="in" id="nBoxPer" type="number" inputmode="numeric" min="1" max="500" placeholder="อัตโนมัติ"></div>
+  </div>
+  <p class="note" style="margin-top:4px">เว้นว่าง = อัตโนมัติ (กล่องละไม่เกิน 100) · เช่น 150 ซองในกล่องเดียว ใส่ 1 กล่อง · นับซ้าย/ขวาแยกต่อกล่อง</p>
   <label class="f">กระดาษกั้นทุกกี่ซอง (0 = ไม่มี)</label><input class="in" id="nSec" type="number" inputmode="numeric" min="0" max="100" value="0">
   <label class="row small" style="margin-top:10px;gap:10px;cursor:pointer"><input type="checkbox" id="nRefill" style="width:22px;height:22px;accent-color:#C9A45C"> หยิบแล้วร้านเอาซองขวาสุดมาเติมให้ช่องเต็ม</label>
   <div class="seg" style="margin-top:8px"><button type="button" aria-pressed="true" data-ra="gap" onclick="pickRA(this)">เติมตรงที่หยิบ</button><button type="button" aria-pressed="false" data-ra="end" onclick="pickRA(this)">เติมท้ายช่องนั้น</button></div>
-  <label class="f">จำนวนฮิต (ฮิตคือเลข 001 ถึงเลขนี้ ที่เหลือเป็นเกลือ)</label><input class="in" id="nHits" type="number" inputmode="numeric" min="1" max="99" value="10">
-  <label class="f">ชื่อฮิต (ไม่ใส่ก็ได้ · บรรทัดละ 1 เรียง 001, 002, …)</label><textarea class="in" id="nLabels" rows="4" placeholder="Luffy PSA10&#10;Zoro PSA10"></textarea>
+  <label class="f">เลขฮิต</label>
+  <div class="seg" id="hmSeg"><button type="button" aria-pressed="true" data-hm="seq" onclick="pickHM(this)">เลขเรียง 001, 002, …</button><button type="button" aria-pressed="false" data-hm="custom" onclick="pickHM(this)">ระบุเลขเอง</button></div>
+  <div id="hmSeq"><label class="f">จำนวนฮิต (ฮิตคือเลข 001 ถึงเลขนี้)</label><input class="in" id="nHits" type="number" inputmode="numeric" min="1" max="99" value="10"></div>
+  <div id="hmCustom" hidden><label class="f">เลขที่เป็นฮิต (คั่นด้วยเว้นวรรคหรือจุลภาค)</label><input class="in" id="nHitNums" inputmode="numeric" placeholder="เช่น 065 095 101" style="font-family:var(--num)"></div>
+  <label class="f">ชื่อฮิต (ไม่ใส่ก็ได้ · บรรทัดละ 1 เรียงตามเลขฮิตจากน้อยไปมาก)</label><textarea class="in" id="nLabels" rows="4" placeholder="Luffy PSA10&#10;Zoro PSA10"></textarea>
   <div class="row" style="margin-top:16px"><button class="btn" onclick="closeSheet()">ยกเลิก</button><button class="btn gold" style="flex:1" onclick="createBoard()">สร้างกระดาน</button></div>`);
 }
+function pickHM(el){pickRA(el);const c=el.dataset.hm==='custom';const a=el.closest('.sheet');a.querySelector('#hmSeq').hidden=c;a.querySelector('#hmCustom').hidden=!c}
 function pickRA(el){el.parentNode.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===el))}
 function pickT(v){NB.total=v;$('#nTotal').value=v;markSeg()}
 function markSeg(){document.querySelectorAll('#segT button').forEach(b=>b.classList.toggle('on',+b.textContent===NB.total))}
@@ -487,12 +508,16 @@ function createBoard(){
   const shop=$('#nShop').value.trim()||'ไม่ระบุร้าน';
   if(!shopList().includes(shop))S.shops.push(shop);S.shopView=shop;
   const total=clamp(parseInt($('#nTotal').value)||100,5,500);
-  const hitCount=clamp(parseInt($('#nHits').value)||1,1,Math.min(99,total));
+  const custom=document.querySelector('#hmSeg [aria-pressed="true"]')?.dataset.hm==='custom';
+  let hitNums=null,hitCount;
+  if(custom){hitNums=parseNums($('#nHitNums').value,total);if(!hitNums.length){toast('ใส่เลขฮิตอย่างน้อย 1 เลข');return}hitCount=hitNums.length}
+  else hitCount=clamp(parseInt($('#nHits').value)||1,1,Math.min(99,total));
   const labels=$('#nLabels').value.split('\n').map(s=>s.trim()).slice(0,hitCount);
+  const boxN=clamp(parseInt($('#nBoxN').value)||0,0,10),boxPer=clamp(parseInt($('#nBoxPer').value)||0,0,500);
   const name=$('#nName').value.trim()||('กระดาน '+new Date().toLocaleDateString('th-TH'));
   const sec=clamp(parseInt($('#nSec').value)||0,0,100),refill=$('#nRefill').checked&&sec>0;
   const refillAt=document.querySelector('[data-ra][aria-pressed="true"]')?.dataset.ra||'gap';
-  const b={id:uid(),shop,name,total,hitCount,labels,sec,refill,refillAt,opened:{},seq:[],log:[],closed:false,mode:'auto',created:Date.now()};
+  const b={id:uid(),shop,name,total,hitCount,hitNums,labels,boxN,boxPer,sec,refill,refillAt,opened:{},seq:[],log:[],closed:false,mode:'auto',created:Date.now()};
   S.boards.unshift(b);save();closeSheet();openBoard(b.id);
 }
 
@@ -531,8 +556,8 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
     const x=UI.sel,o=b.opened[x];
     const used=usedNums(b);
     let hb='';
-    for(let n=1;n<=b.hitCount;n++){const cur=o&&val(o)===n;if(used.has(n)&&!cur)continue;
-      hb+=`<button class="btn ${cur?'cur':''}" onclick="mark(${x},${n})">★ ${pad(n)}${b.labels&&b.labels[n-1]?`<small>${esc(b.labels[n-1])}</small>`:''}</button>`}
+    for(const n of hitList(b)){const cur=o&&val(o)===n;if(used.has(n)&&!cur)continue;
+      hb+=`<button class="btn ${cur?'cur':''}" onclick="mark(${x},${n})">★ ${pad(n)}${hitLabel(b,n)?`<small>${esc(hitLabel(b,n))}</small>`:''}</button>`}
     let where,sub='';
     if(o){where=`${boxPrefix(b,boxOf(b,x))}ซองตำแหน่งเดิม #${x} · บันทึกไว้: ${numLabel(b,val(o))}`}
     else{
@@ -545,7 +570,7 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
         <span class="small">ออกเลข</span>
         <input type="number" id="numIn" inputmode="numeric" enterkeyhint="done" min="1" max="${b.total}" placeholder="เช่น 45" value="${o&&val(o)!=null?val(o):''}" style="width:110px;text-align:center;font-family:var(--num);font-weight:700;font-size:20px;background:var(--panel2);border:1px solid var(--gold);border-radius:10px;padding:6px 8px">
         <button class="btn gold" onclick="saveNum(${x})">บันทึก</button>
-        <span class="small muted">ฮิต = 001–${pad(b.hitCount)}</span>
+        <span class="small muted">ฮิต = ${hitRangeText(b)}</span>
       </div>
       <div class="row" style="margin-top:10px">
         <button class="btn sm" onclick="mark(${x},null)">เกลือ (ไม่รู้เลข)</button>
@@ -562,10 +587,10 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
   const groups=groupHits(b,R.perHit);
 
   app.innerHTML=`
-  <header class="top"><div class="row"><button class="btn sm" onclick="openShop(getB(S.cur).shop)">‹ ${esc(b.shop)}</button><button class="btn sm" onclick="openSettings()">⚙︎ ตั้งค่ากล่อง</button></div><div style="text-align:right"><div class="t" style="font-weight:600">${esc(b.name)}</div><div class="sub">${esc(b.shop)} · ฮิต 001–${pad(b.hitCount)} · เกลือ ${pad(b.hitCount+1)}–${pad(b.total)}${b.sec?` · กั้นทุก ${b.sec}${b.refill?' · เติมซองจากขวาสุด':''}`:''}${b.closed?' · ปิดแล้ว':''}</div></div></header>
+  <header class="top"><div class="row"><button class="btn sm" onclick="openShop(getB(S.cur).shop)">‹ ${esc(b.shop)}</button><button class="btn sm" onclick="openSettings()">⚙︎ ตั้งค่ากล่อง</button></div><div style="text-align:right"><div class="t" style="font-weight:600">${esc(b.name)}</div><div class="sub">${esc(b.shop)} · ฮิต ${hitRangeText(b)}${b.sec?` · กั้นทุก ${b.sec}${b.refill?' · เติมซองจากขวาสุด':''}`:''}${b.closed?' · ปิดแล้ว':''}</div></div></header>
   <div class="stats">
     <div class="stat"><b>${R.U}</b><span>ซองที่เหลือ</span></div>
-    <div class="stat"><b>${R.H}<small class="muted" style="font-size:13px">/${b.hitCount}</small></b><span>ฮิตที่เหลือ</span></div>
+    <div class="stat"><b>${R.H}<small class="muted" style="font-size:13px">/${hitList(b).length}</small></b><span>ฮิตที่เหลือ</span></div>
     <div class="stat"><b>${R.U?pct(R.base):'–'}</b><span>ฮิตเรทตอนนี้</span></div>
     <div class="stat"><b>${R.spread?pct(R.mx):R.U?pct(R.base):'–'}</b><span>ซองที่ดีที่สุด</span></div>
   </div>
@@ -633,6 +658,12 @@ function saveNum(x){
 function openSettings(){
   const b=getB(S.cur);
   openSheet(`<h2>ตั้งค่ากล่อง</h2>
+  <div class="row" style="gap:10px">
+    <div style="flex:1;min-width:120px"><label class="f">จำนวนกล่อง</label><input class="in" id="sBoxN" type="number" inputmode="numeric" min="1" max="10" placeholder="อัตโนมัติ" value="${b.boxN||''}"></div>
+    <div style="flex:1;min-width:120px"><label class="f">ซองต่อกล่อง</label><input class="in" id="sBoxPer" type="number" inputmode="numeric" min="1" max="500" placeholder="อัตโนมัติ" value="${b.boxPer||''}"></div>
+  </div>
+  <p class="note" style="margin-top:4px">ตอนนี้: ${boxes(b).map(x=>x.to-x.from+1).join(' + ')} ซอง (รวม ${b.total})</p>
+  <label class="f">เลขฮิต (คั่นด้วยเว้นวรรค · เว้นว่าง = เรียง 001 ถึงจำนวนฮิต)</label><input class="in" id="sHitNums" inputmode="numeric" style="font-family:var(--num)" placeholder="เรียง 001–${pad(b.hitCount)}" value="${b.hitNums&&b.hitNums.length?b.hitNums.map(pad).join(' '):''}">
   <label class="f">กระดาษกั้นทุกกี่ซอง (0 = ไม่มี)</label><input class="in" id="sSec" type="number" inputmode="numeric" min="0" max="100" value="${b.sec||0}">
   <label class="row small" style="margin-top:10px;gap:10px;cursor:pointer"><input type="checkbox" id="sRefill" ${b.refill?'checked':''} style="width:22px;height:22px;accent-color:#C9A45C"> หยิบแล้วร้านเอาซองขวาสุดมาเติมให้ช่องเต็ม</label>
   <div class="seg" style="margin-top:8px"><button type="button" aria-pressed="${b.refillAt!=='end'}" data-ra="gap" onclick="pickRA(this)">เติมตรงที่หยิบ</button><button type="button" aria-pressed="${b.refillAt==='end'}" data-ra="end" onclick="pickRA(this)">เติมท้ายช่องนั้น</button></div>
@@ -641,6 +672,8 @@ function openSettings(){
 }
 function saveSettings(){
   const b=getB(S.cur);b.sec=clamp(parseInt($('#sSec').value)||0,0,100);b.refill=$('#sRefill').checked&&b.sec>0;
+  b.boxN=clamp(parseInt($('#sBoxN').value)||0,0,10);b.boxPer=clamp(parseInt($('#sBoxPer').value)||0,0,500);
+  const hn=parseNums($('#sHitNums').value,b.total);if(hn.length){b.hitNums=hn;b.hitCount=hn.length}else b.hitNums=null;
   b.refillAt=document.querySelector('#sheet [data-ra][aria-pressed="true"]')?.dataset.ra||'gap';
   UI.sel=null;save();closeSheet();renderBoard('pos');
 }
@@ -667,7 +700,7 @@ function undo(){
 }
 function closeBoard(){
   const b=getB(S.cur),f=foundHits(b).length;
-  const msg=f<b.hitCount?`ยังจดฮิตไม่ครบ (${f}/${b.hitCount})\nข้อมูลที่จดไว้ยังใช้วิเคราะห์ร้านได้\n\nปิดกระดานเลยไหม?`:'ปิดกระดานและบันทึกเป็นข้อมูลร้าน?';
+  const msg=f<hitList(b).length?`ยังจดฮิตไม่ครบ (${f}/${hitList(b).length})\nข้อมูลที่จดไว้ยังใช้วิเคราะห์ร้านได้\n\nปิดกระดานเลยไหม?`:'ปิดกระดานและบันทึกเป็นข้อมูลร้าน?';
   ask(msg.replace(/\n/g,'<br>'),'ปิดกระดาน',()=>{b.closed=true;UI.sel=null;save();renderBoard()});
 }
 function reopen(){const b=getB(S.cur);b.closed=false;save();renderBoard()}
