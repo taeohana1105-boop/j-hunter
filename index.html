@@ -149,6 +149,8 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
 .why[open] summary::before{content:"▾ ";}
 .why ul{margin:6px 0 2px;padding-left:18px;font-size:13px;line-height:1.6;color:var(--ink)}
 .why li{margin-bottom:3px}
+.bc-acts{justify-content:flex-end;margin-top:10px}
+.bcard:focus-visible{outline:2px solid var(--gold)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--muted);margin-top:4px}
 .legend em{display:inline-block;width:8px;height:14px;border-radius:2px;vertical-align:-2px;margin-right:5px}
 </style>
@@ -467,11 +469,12 @@ function boardCard(b,c){
       <div><b>${pct(c.R.base)}</b><span>ฮิตเรทตอนนี้</span></div>
       <div class="hi"><b>${best?pct(best.p):pct(c.R.base)}</b><span>${best?`ซองดีสุด · ${boxes(b).length>1?`กล่อง ${best.lr.bx.i+1} `:''}ซ้าย ${best.lr.L} / ขวา ${best.lr.R}`:'ทุกซองเท่ากัน'}</span></div></div>`;
   }
-  return `<button class="card click" onclick="openBoard('${b.id}')">
+  return `<div class="card click bcard" role="button" tabindex="0" onclick="openBoard('${b.id}')" onkeydown="if(event.key==='Enter')openBoard('${b.id}')">
     <div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="t">${esc(b.name)}${b.closed?'<span class="pill">ปิดแล้ว</span>':''}</div>
     <div class="muted small num" style="margin-top:2px">${b.total} ซอง${boxes(b).length>1?` (${boxes(b).length} กล่อง)`:''} · ฮิต ${hitRangeText(b)}${b.refill?' · เติมซอง':''}</div></div>${right}</div>
     <div class="progress"><i style="width:${(o/b.total*100).toFixed(1)}%"></i></div>
-    <div class="muted small num">เหลือ ${U}/${b.total} ซอง · ฮิตเหลือ ${H}/${hitList(b).length}${b.closed?'':` · จดแล้ว ${o} ซอง`}</div></button>`;
+    <div class="muted small num">เหลือ ${U}/${b.total} ซอง · ฮิตเหลือ ${H}/${hitList(b).length}${b.closed?'':` · จดแล้ว ${o} ซอง`}</div>
+    <div class="row bc-acts">${b.closed?`<button class="btn sm" onclick="event.stopPropagation();reopenId('${b.id}')">เปิดกระดานอีกครั้ง</button>`:''}<button class="btn sm red" onclick="event.stopPropagation();delBoardId('${b.id}')">ลบกระดาน</button></div></div>`;
 }
 
 /* ===== สร้างกระดาน ===== */
@@ -704,6 +707,9 @@ function closeBoard(){
   ask(msg.replace(/\n/g,'<br>'),'ปิดกระดาน',()=>{b.closed=true;UI.sel=null;save();renderBoard()});
 }
 function reopen(){const b=getB(S.cur);b.closed=false;save();renderBoard()}
+function delBoardId(id){const b=getB(id);if(!b)return;
+  ask(`ลบกระดาน “${esc(b.name)}” ถาวร?<br><span class="small muted">ข้อมูลที่จดไว้ในกระดานนี้จะหายจากทุกเครื่อง</span>`,'ลบกระดาน',()=>{S.boards=S.boards.filter(x=>x.id!==id);if(S.cur===id)S.cur=null;save();toast('ลบแล้ว');renderShop()})}
+function reopenId(id){const b=getB(id);if(!b)return;b.closed=false;save();renderShop()}
 function delBoard(){ask('ลบกระดานนี้ถาวร?','ลบกระดาน',()=>{const sh=getB(S.cur).shop;S.boards=S.boards.filter(b=>b.id!==S.cur);save();openShop(sh)})}
 
 /* ===== sheet / backup ===== */
