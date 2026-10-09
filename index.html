@@ -126,6 +126,18 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
 .sync:empty{display:none}
 .sync.ok{border-color:rgba(46,139,110,.6);color:#7FD3B4}
 .sync.busy{border-color:var(--gold);color:var(--gold2)}
+.lvl{margin-top:14px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2)}
+.lvl-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.lvl-top .pill{margin:0}
+.lvl-name{font-family:var(--display);font-size:20px;color:var(--gold2);margin:4px 0 8px}
+.lv-off .lvl-name,.lv-none .lvl-name{color:var(--ink)}
+.lv-high{border-color:rgba(var(--hot),.6)}
+.meter{position:relative;height:8px;border-radius:9px;background:linear-gradient(90deg,#3a3d47 0 20%,#6b5a33 20% 42%,#a9802f 42% 68%,rgb(var(--hot)) 68%)}
+.meter span{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:var(--ink);border:3px solid var(--bg);transform:translate(-50%,-50%);box-shadow:0 0 0 1px var(--gold)}
+.meter-lbl{display:grid;grid-template-columns:20% 22% 26% 32%;font-size:11px;color:var(--muted);margin-top:4px}
+.meter-lbl span{text-align:center}
+.lvl-adv{margin-top:8px;line-height:1.55}
+.recdot{color:var(--gold2)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--muted);margin-top:4px}
 .legend em{display:inline-block;width:8px;height:14px;border-radius:2px;vertical-align:-2px;margin-right:5px}
 </style>
@@ -226,6 +238,36 @@ function params(b){
   if(m==='off')return{q:0,fp:st.fp,step:st.step,st,src:'ปิดการคาดการณ์ (สุ่มล้วน)'};
   if(fixed)return{q:fixed,fp:st.fp,step:st.step,st,src:'ตั้งเอง: '+{low:'ต่ำ',mid:'กลาง',high:'สูง'}[m]};
   return{q:st.q,fp:st.fp,step:st.step,st,src:st.n?`อัตโนมัติจากข้อมูล ${st.n} คู่เลข${st.boards?` (รวม ${st.boards} กระดานเก่าของร้าน)`:''}`:'อัตโนมัติ: ยังไม่มีข้อมูล ใช้ค่าเริ่มต้น'};
+}
+
+/* ===== ประเมินระดับการสับจากข้อมูล ===== */
+function levelOf(st){
+  if(st.n<3||st.close+ (st.n-st.close)<3)return{key:'none',name:'ยังบอกไม่ได้',conf:'ข้อมูลยังน้อย'};
+  const q=st.q;
+  const conf=st.n>=12?'ค่อนข้างแน่น':st.n>=6?'พอเชื่อได้':'ข้อมูลยังน้อย';
+  if(q<0.2)return{key:'off',name:'ใกล้เคียงสุ่ม',conf,q};
+  if(q<0.42)return{key:'low',name:'ต่ำ',conf,q};
+  if(q<0.68)return{key:'mid',name:'กลาง',conf,q};
+  return{key:'high',name:'สูง',conf,q};
+}
+function levelHTML(b,st){
+  const L=levelOf(st),q=L.q??st.q;
+  const adv={
+    none:`จดเลขซองที่เปิดเพิ่มอีกหน่อย ต้องมีคู่เลขที่ใกล้กัน (ห่างกันไม่เกิน 5 เช่น 015 กับ 017) อย่างน้อย 3 คู่ ตอนนี้มี ${st.n} คู่`,
+    off:'ร้านนี้สับทั่ว เลขที่ใกล้กันไม่ได้อยู่ใกล้กันในกล่อง ทุกซองโอกาสใกล้เคียงกัน ไม่ควรเชื่อโซนที่แอปชี้',
+    low:'มีแพทเทิร์นเล็กน้อย ใช้ซองที่แนะนำเป็นแค่ตัวช่วยตัดสินใจ อย่าทุ่มตามโซนมาก',
+    mid:'แพทเทิร์นชัดพอสมควร ซองที่แนะนำมีโอกาสติดฮิตสูงกว่าซองทั่วไปจริง',
+    high:'สับไม่ทั่วมาก เลขยังเรียงต่อกันเป็นช่วง ๆ ซองในโซนที่แนะนำน่าเชื่อถือ'
+  }[L.key];
+  const dir=st.close>=2?(st.fp>=0.65?'เลขเพิ่มขึ้นไปทางขวา →':st.fp<=0.35?'เลขเพิ่มขึ้นไปทางซ้าย ←':'เลขเรียงปนกันทั้งสองทาง'):'';
+  return `<div class="lvl lv-${L.key}">
+    <div class="lvl-top"><span class="small muted">ระดับที่แอปประเมินจากข้อมูล</span><span class="pill">${L.conf}</span></div>
+    <div class="lvl-name">${L.key==='none'?'ยังบอกไม่ได้':'สับไม่ทั่ว: '+L.name}</div>
+    ${L.key==='none'?'':`<div class="meter"><span style="left:${Math.round(clamp(q,0,1)*100)}%"></span></div>
+    <div class="meter-lbl"><span>สุ่ม</span><span>ต่ำ</span><span>กลาง</span><span>สูง</span></div>`}
+    <div class="lvl-adv">${adv}</div>
+    <div class="small muted" style="margin-top:6px">คู่เลขใกล้กันที่อยู่ใกล้กันจริง ${st.close}/${st.n} คู่${st.boards?` · รวมข้อมูลจาก ${st.boards} กระดานเก่าของร้าน`:''}${dir?` · ${dir}`:''}${st.step>1.2?` · เลขห่างกันราว ${st.step.toFixed(1)} ซอง`:''}</div>
+  </div>`;
 }
 
 /* ===== โมเดลคาดการณ์ =====
@@ -515,10 +557,10 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
         !R.spread?'<div class="muted small" style="margin-top:4px">ยังไม่มีเลขที่ใกล้ฮิตพอจะชี้โซนได้ — ตอนนี้ทุกซองโอกาสใกล้เคียงกัน</div>':
         `<div class="sug">${R.top.map(chip).join('')}</div>`}
       ${groups.length?`<div class="list" style="margin-top:10px">${groups.map(g=>`<div>ฮิต <b style="color:var(--gold2)">${g.names}</b> → น่าอยู่${g.txt} <span class="muted small">· มั่นใจ ${pct(g.conf)}</span></div>`).join('')}</div>`:''}
-      <div class="note" style="margin-top:12px">ความสับของร้าน: ${shuffleText(st)}<br>ทิศเลข: ${st.close>=2?(st.fp>=0.65?'เลขมักเพิ่มขึ้นไปทางขวา →':st.fp<=0.35?'เลขมักเพิ่มขึ้นไปทางซ้าย ←':'ปนกันทั้งสองทาง'):'ยังไม่พอจะบอก'}</div>
-      <label class="f">ระดับความเชื่อว่าร้านสับไม่ทั่ว</label>
-      <div class="seg" style="flex-wrap:wrap">${modes.map(([v,t])=>`<button aria-pressed="${(b.mode||'auto')===v}" onclick="setMode('${v}')">${t}</button>`).join('')}</div>
-      <div class="note">ใช้: ${R.P.src}<br>⚠︎ ถ้าร้านสับดีจริง ทุกซองมีโอกาสเท่ากัน แอปจะเห็นเองจากข้อมูล (เลขใกล้กันจะไม่อยู่ใกล้กัน) และลดความมั่นใจลง</div>
+      ${levelHTML(b,st)}
+      <label class="f">ระดับที่ใช้คำนวณ <span class="muted">(ค่าเริ่มต้น “อัตโนมัติ” = ใช้ระดับที่แอปประเมิน)</span></label>
+      <div class="seg" style="flex-wrap:wrap">${modes.map(([v,t])=>{const rec=levelOf(st).key===v&&v!=='auto';return `<button aria-pressed="${(b.mode||'auto')===v}" onclick="setMode('${v}')">${t}${v==='auto'&&levelOf(st).key!=='none'?` <small style="opacity:.75">(${levelOf(st).name})</small>`:''}${rec?' <span class="recdot" title="แอปแนะนำ">★</span>':''}</button>`}).join('')}</div>
+      <div class="note">ใช้: ${R.P.src}</div>
     </div>
     <div class="row" style="margin-top:12px">
       <button class="btn" onclick="undo()" ${b.log.length?'':'disabled'}>↶ ย้อนกลับ</button>
