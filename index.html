@@ -138,6 +138,13 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
 .meter-lbl span{text-align:center}
 .lvl-adv{margin-top:8px;line-height:1.55}
 .recdot{color:var(--gold2)}
+.why{margin-top:4px}
+.why summary{cursor:pointer;font-size:12px;color:var(--gold);list-style:none;display:inline-block}
+.why summary::-webkit-details-marker{display:none}
+.why summary::before{content:"▸ ";}
+.why[open] summary::before{content:"▾ ";}
+.why ul{margin:6px 0 2px;padding-left:18px;font-size:13px;line-height:1.6;color:var(--ink)}
+.why li{margin-bottom:3px}
 .legend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--muted);margin-top:4px}
 .legend em{display:inline-block;width:8px;height:14px;border-radius:2px;vertical-align:-2px;margin-right:5px}
 </style>
@@ -303,7 +310,10 @@ function model(b){
       let vr=0;p.forEach((v,i)=>{const e=v-(1-M)/U;if(e>0)vr+=e*(un[i]-mu)**2});const sd=Math.sqrt(vr/sw);
       const c=un[best],r=Math.max(1,Math.round(Math.min(sd,N/6)));
       let conf=0;un.forEach((x,i)=>{if(x>=c-r&&x<=c+r)conf+=p[i]});
-      perHit.push({n:u,center:c,lo:Math.max(1,c-r),hi:Math.min(N,c+r),conf});
+      const lo=Math.max(1,c-r),hi=Math.min(N,c+r);
+      const rangeN=un.filter(x=>x>=lo&&x<=hi).length;
+      const clues=obs.map(o=>({v:o.v,pos:o.pos,d:u-o.v,w:Math.pow(P.q,Math.abs(u-o.v))})).filter(o=>o.w>0.03).sort((a,z)=>z.w-a.w).slice(0,2);
+      perHit.push({n:u,center:c,lo,hi,conf,rangeN,rnd:rangeN/U,clues});
     }
   });
   const prob={};let mx=0,mn=1;
@@ -330,8 +340,31 @@ function rangeText(b,p){
 }
 function groupHits(b,list){
   const m=new Map();
-  list.forEach(p=>{const t=rangeText(b,p);if(!m.has(t))m.set(t,{ns:[],conf:0});const g=m.get(t);g.ns.push(p.n);g.conf=Math.max(g.conf,p.conf)});
-  return [...m].map(([txt,g])=>({txt,conf:g.conf,names:g.ns.length>2?`${pad(g.ns[0])}–${pad(g.ns[g.ns.length-1])}`:g.ns.map(n=>esc(hitName(b,n))).join(', ')}));
+  list.forEach(p=>{const t=rangeText(b,p);if(!m.has(t))m.set(t,{ns:[],conf:0,p});const g=m.get(t);g.ns.push(p.n);if(p.conf>g.conf){g.conf=p.conf;g.p=p}});
+  return [...m].map(([txt,g])=>({txt,conf:g.conf,p:g.p,names:g.ns.length>2?`${pad(g.ns[0])}–${pad(g.ns[g.ns.length-1])}`:g.ns.map(n=>esc(hitName(b,n))).join(', ')}));
+}
+/* เหตุผลของตัวเลข “มั่นใจ %” */
+function whyHTML(b,p,P){
+  const st=P.st,u=p.n,lines=[];
+  p.clues.forEach((c,i)=>{
+    const ad=Math.abs(c.d),dist=Math.max(1,Math.round(ad*P.step));
+    let dir;
+    if(st.close>=2&&(P.fp>=0.65||P.fp<=0.35)){
+      const right=(c.d>0)===(P.fp>=0.65);
+      dir=`ร้านนี้เลขมักเพิ่มขึ้นไปทาง${P.fp>=0.65?'ขวา':'ซ้าย'} ${pad(u)} ${c.d>0?'มากกว่า':'น้อยกว่า'} ${pad(c.v)} จึงน่าอยู่ทาง<b>${right?'ขวา':'ซ้าย'}</b>ของซองนั้นประมาณ ${dist} ซอง`;
+    }else dir=`ยังไม่รู้ว่าเลขเรียงไปทางไหน แอปเลยเผื่อไว้ทั้งซ้ายและขวาของซองนั้นประมาณ ${dist} ซอง`;
+    lines.push(`${i?'อีกเบาะแส: ':''}เลข <b>${pad(c.v)}</b> ออกที่ซองตำแหน่งเดิม #${c.pos} ซึ่งห่างจาก ${pad(u)} ${ad<=3?'แค่':''} ${ad} เลข · ${dir}`);
+  });
+  const ratio=p.rnd>0?p.conf/p.rnd:0;
+  lines.push(`ถ้าซองเรียงแบบสุ่มล้วน ช่วงนี้ (${p.rangeN} ซอง) จะมีโอกาสแค่ ${pct(p.rnd)} ตอนนี้ ${pct(p.conf)} = <b>สูงกว่าสุ่ม ${ratio.toFixed(1)} เท่า</b>`);
+  const lim=[];
+  if(st.n<6)lim.push(`ข้อมูลคู่เลขยังน้อย (${st.n} คู่)`);
+  if(P.q<0.5)lim.push(`ร้านนี้สับพอใช้ (ดัชนี ${Math.round(P.q*100)}%) เลขที่ใกล้กันไม่ได้อยู่ใกล้กันเสมอ`);
+  const best=p.clues[0];if(best&&Math.abs(best.d)>=3)lim.push(`เลขที่ใกล้ที่สุดยังห่างไป ${Math.abs(best.d)} เลข ยิ่งห่างยิ่งเดายาก`);
+  if(!(st.close>=2&&(P.fp>=0.65||P.fp<=0.35)))lim.push('ยังไม่รู้ทิศที่เลขเรียง ต้องเผื่อสองข้าง ช่วงเลยกว้าง');
+  if(b.refill&&/,/.test(rangeText(b,p)))lim.push('มีซองที่ร้านย้ายมาเติม ช่วงเลยแตกเป็นหลายจุด');
+  if(lim.length)lines.push(`ที่ยังไม่สูงกว่านี้เพราะ: ${lim.join(' · ')}`);
+  return `<details class="why"><summary>ทำไมมั่นใจ ${pct(p.conf)}?</summary><ul>${lines.map(l=>`<li>${l}</li>`).join('')}</ul></details>`;
 }
 
 /* ===== ร้าน ===== */
@@ -556,7 +589,7 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
         !R.obsN?'<div class="muted small" style="margin-top:4px">ยังไม่มีข้อมูล — จดเลขซองที่คนอื่นเปิด (ทั้งเกลือและฮิต) สัก 5–10 ซอง แอปจะเริ่มหาโซน</div>':
         !R.spread?'<div class="muted small" style="margin-top:4px">ยังไม่มีเลขที่ใกล้ฮิตพอจะชี้โซนได้ — ตอนนี้ทุกซองโอกาสใกล้เคียงกัน</div>':
         `<div class="sug">${R.top.map(chip).join('')}</div>`}
-      ${groups.length?`<div class="list" style="margin-top:10px">${groups.map(g=>`<div>ฮิต <b style="color:var(--gold2)">${g.names}</b> → น่าอยู่${g.txt} <span class="muted small">· มั่นใจ ${pct(g.conf)}</span></div>`).join('')}</div>`:''}
+      ${groups.length?`<div class="small muted" style="margin-top:12px">“มั่นใจ %” = โอกาสที่ฮิตใบนั้นอยู่ในช่วงซองที่บอก · กด “ทำไม” เพื่อดูเหตุผล</div><div class="list" style="margin-top:4px">${groups.map(g=>`<div>ฮิต <b style="color:var(--gold2)">${g.names}</b> → น่าอยู่${g.txt} <span class="muted small">· มั่นใจ ${pct(g.conf)}</span>${whyHTML(b,g.p,R.P)}</div>`).join('')}</div>`:''}
       ${levelHTML(b,st)}
       <label class="f">ระดับที่ใช้คำนวณ <span class="muted">(ค่าเริ่มต้น “อัตโนมัติ” = ใช้ระดับที่แอปประเมิน)</span></label>
       <div class="seg" style="flex-wrap:wrap">${modes.map(([v,t])=>{const rec=levelOf(st).key===v&&v!=='auto';return `<button aria-pressed="${(b.mode||'auto')===v}" onclick="setMode('${v}')">${t}${v==='auto'&&levelOf(st).key!=='none'?` <small style="opacity:.75">(${levelOf(st).name})</small>`:''}${rec?' <span class="recdot" title="แอปแนะนำ">★</span>':''}</button>`}).join('')}</div>
