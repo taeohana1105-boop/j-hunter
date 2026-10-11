@@ -222,6 +222,12 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
 .sc2-sub{font-size:13px;margin:2px 0 0 28px}
 .sc2-ex{font-size:11px;color:var(--muted);margin:2px 0 0 28px}
 .v-good{color:var(--ok);font-weight:700}.v-same{color:var(--muted);font-weight:700}.v-bad{color:#FF8A8A;font-weight:700}
+.batch{max-width:780px;margin:10px auto 0;padding:10px 12px;border:1px dashed var(--gold);border-radius:12px;background:rgba(201,164,92,.05)}
+.bchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.bchip{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--gold);color:var(--gold2);border-radius:99px;padding:4px 6px 4px 12px;font-size:13px;font-family:var(--num)}
+.bchip small{color:var(--muted)}
+.bchip button{border:0;background:rgba(255,255,255,.08);color:var(--ink);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px}
+#posN{width:110px}
 </style>
 </head>
 <body>
@@ -230,7 +236,7 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
 <script>
 const KEY='jhunter.v1', PER=100;
 let S=load();
-const UI={sel:null,side:'L',box:0};
+const UI={sel:null,side:'L',box:0,multi:false,batch:[],queue:[],qsnap:{},qn:0};
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.boards))return s}catch(e){}return{boards:[],cur:null}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}if(typeof scheduleSync==='function')scheduleSync()}
 const app=document.getElementById('app');
@@ -1167,7 +1173,7 @@ function createBoard(){
 }
 
 /* ===== หน้ากระดาน ===== */
-function openBoard(id){S.cur=id;UI.sel=null;UI.box=0;save();renderBoard('pos')}
+function openBoard(id){S.cur=id;UI.sel=null;UI.box=0;UI.batch=[];UI.queue=[];UI.qsnap={};UI.qn=0;save();renderBoard('pos')}
 function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
   const b=getB(S.cur);if(!b)return renderHome();
   const R=mergeEngine(b,model(b)),BX=boxes(b),st=R.P.st;
@@ -1188,7 +1194,7 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
     const slots=b.refill?PO[bx.i]:Array.from({length:bx.to-bx.from+1},(_,j)=>bx.from+j);
     slots.forEach((x,j)=>{
       if(sec&&j>0&&(b.refill?j%sec===0:(x-bx.from)%sec===0)){sl+=DIV;heat+=HDV}
-      const o=b.opened[x],sel=UI.sel===x?' sel':'';
+      const o=b.opened[x],sel=(UI.sel===x||(!o&&(UI.batch.some(it=>it.x===x)||UI.queue.includes(x))))?' sel':'';
       if(o){
         const v=val(o),h=isHitV(b,v),G=gradeOf(b,b.opened,b.pred,x);
         heat+='<div class="hb z"></div>';
@@ -1214,11 +1220,12 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
     let where,sub='';
     if(o){where=`${boxPrefix(b,boxOf(b,x))}ซองตำแหน่งเดิม #${x} · บันทึกไว้: ${numLabel(b,val(o))}`}
     else{
-      const p=lr(b,x);where=`${boxPrefix(b,p.bx)}ซองที่ ${p.L} จากซ้าย · ${p.R} จากขวา`;
+      const p=lr(b,x),qs=UI.qsnap[x];where=qs&&qs.L?`${boxPrefix(b,p.bx)}ซองที่ ${qs.L} จากซ้าย · ${qs.R} จากขวา <span class="small muted">(ตอนเลือก)</span>`:`${boxPrefix(b,p.bx)}ซองที่ ${p.L} จากซ้าย · ${p.R} จากขวา`;
       const gp=R.guessP?R.guessP(x):null,g=gp?null:R.guess(x);
       sub=`ตำแหน่งเดิม #${x}${moved(b,x)?' (ซองนี้ถูกย้ายมาเติมจากขวาสุด)':''} · โอกาสฮิต ${pct(R.spread?R.prob[x]:R.base)}${T&&T.out.length?` · เป็นเลขที่ตามล่า ${pct(T.pt[x])}`:''}${EV?` · คุ้ม ${money(EV.ev[x])}`:''}${gp?` · น่าจะเป็นเลข ${gp.map(o=>`${isHitV(b,o.u)?'★':''}${pad(o.u)} (${pct(o.p)})`).join(' · ')}`:g?` · คาดว่าเป็นเลข ${g.nums.map(n=>isHitV(b,n)?'★'+pad(n):pad(n)).join(' / ')}`:''}`;
     }
-    rec=`<div class="rec" id="rec"><div class="where">${where}</div>${sub?`<div class="orig">${sub}</div>`:''}
+    const qi=UI.queue.includes(x)?UI.qn-UI.queue.length+1:0;
+    rec=`<div class="rec" id="rec">${qi?`<div class="small" style="color:var(--gold2);margin-bottom:4px">ชุดหลายซอง · ซองที่ ${qi}/${UI.qn} <span class="muted">(ตำแหน่งนับจากกล่องก่อนหยิบชุดนี้)</span></div>`:''}<div class="where">${where}</div>${sub?`<div class="orig">${sub}</div>`:''}
       <div class="row" style="margin-top:12px">
         <span class="small">ออกเลข</span>
         <input type="number" id="numIn" inputmode="numeric" enterkeyhint="done" min="1" max="${NM(b)}" placeholder="เช่น 45" value="${o&&val(o)!=null?val(o):''}" style="width:110px;text-align:center;font-family:var(--num);font-weight:700;font-size:20px;background:var(--panel2);border:1px solid var(--gold);border-radius:10px;padding:6px 8px">
@@ -1228,7 +1235,7 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
       <div class="row" style="margin-top:10px">
         <button class="btn sm" onclick="mark(${x},null)">เกลือ (ไม่รู้เลข)</button>
         ${o?`<button class="btn sm red" onclick="unmark(${x})">ล้าง · คืนซองเข้ากล่อง</button>`:''}
-        <button class="btn sm" onclick="UI.sel=null;renderBoard('pos')">ยกเลิก</button>
+        ${qi?`<button class="btn sm" onclick="skipQ(${x})">ข้ามซองนี้</button><button class="btn sm" onclick="cancelQ()">ยกเลิกทั้งชุด</button>`:`<button class="btn sm" onclick="UI.sel=null;renderBoard('pos')">ยกเลิก</button>`}
       </div>
       ${hb?`<div class="small muted" style="margin-top:10px">ปุ่มลัดฮิต</div><div class="hitbtns">${hb}</div>`:''}</div>`;
   }
@@ -1262,11 +1269,17 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
     ${R.U&&!b.closed?`<div class="pos-pick" style="margin-top:14px">
       ${BX.length>1?`<div class="seg">${BX.map(bx=>`<button aria-pressed="${UI.box===bx.i}" onclick="UI.box=${bx.i};renderBoard('pos')">กล่อง ${bx.i+1}</button>`).join('')}</div>`:''}
       <span class="small">ซองที่</span>
-      <input type="number" id="posN" min="1" inputmode="numeric" placeholder="11" enterkeyhint="go">
+      <input type="text" id="posN" inputmode="numeric" autocomplete="off" placeholder="${UI.multi?'5 6 7':'11'}" enterkeyhint="${UI.multi?'next':'go'}">
       <span class="small">นับจาก</span>
       <div class="seg"><button aria-pressed="${UI.side!=='R'}" onclick="setSide('L')">ซ้าย</button><button aria-pressed="${UI.side==='R'}" onclick="setSide('R')">ขวา</button></div>
-      <button class="btn gold sm" onclick="goPos()">เลือก</button>
-    </div>`:''}
+      <button class="btn gold sm" onclick="goPos()">${UI.multi?'+ เพิ่ม':'เลือก'}</button>
+      <div class="seg"><button aria-pressed="${!UI.multi}" onclick="setMulti(false)">ทีละซอง</button><button aria-pressed="${UI.multi}" onclick="setMulti(true)">หลายซอง</button></div>
+    </div>
+    ${UI.multi&&!UI.queue.length?`<div class="batch">
+      <div class="small muted">โหมดหลายซอง: ใส่ทุกซองที่คนซื้อในรอบเดียวกันก่อน (นับจากกล่องตอนที่ยังไม่ได้หยิบ) · พิมพ์ทีละเลขแล้วกด Enter หรือพิมพ์หลายเลข เช่น <b>5 6 7</b> · แตะซองในกล่องหรือการ์ดแนะนำเพื่อเพิ่มก็ได้</div>
+      ${UI.batch.length?`<div class="bchips">${UI.batch.map(it=>{const q=lr(b,it.x);return `<span class="bchip">${boxPrefix(b,q.bx)}${it.s==='R'?`ขวา ${q.R}`:`ซ้าย ${q.L}`} <small>#${it.x}</small><button onclick="rmBatch(${it.x})" aria-label="เอาออก">✕</button></span>`}).join('')}</div>
+      <div class="row" style="margin-top:8px"><button class="btn gold" onclick="startBatch()">จดเลข ${UI.batch.length} ซอง →</button><button class="btn sm" onclick="UI.batch=[];renderBoard('pos')">ล้าง</button></div>`:''}
+    </div>`:''}`:''}
     ${rec}
     <div class="card" style="margin-top:14px">
       <div class="t">🎯 ซองที่น่าจุ่ม <span class="muted small" style="font-weight:400">(นับจากซองที่เหลือตอนนี้)</span></div>
@@ -1305,13 +1318,31 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
   else if(focus==='pos'&&inp)inp.focus({preventScroll:true});
 }
 function setSide(s){UI.side=s;const v=$('#posN')?.value;renderBoard('pos');if(v&&$('#posN'))$('#posN').value=v}
-function selPos(x){const b=getB(S.cur);UI.sel=x;UI.pick=null;const bx=boxOf(b,x);if(bx)UI.box=bx.i;renderBoard()}
+function selPos(x){const b=getB(S.cur);if(UI.multi&&!UI.queue.length&&!b.opened[x]){const i=UI.batch.findIndex(it=>it.x===x);if(i>=0)UI.batch.splice(i,1);else UI.batch.push({x,s:UI.side==='R'?'R':'L'});renderBoard('pos');return}UI.sel=x;UI.pick=null;const bx=boxOf(b,x);if(bx)UI.box=bx.i;renderBoard()}
 function goPos(){
-  const b=getB(S.cur),n=parseInt($('#posN').value);
+  const b=getB(S.cur),ns=(String($('#posN').value).match(/\d+/g)||[]).map(Number);
   const bx=boxes(b)[UI.box],r=remainIn(b,bx);
-  if(!n||n<1||n>r.length){toast(`ใส่เลข 1–${r.length} (เหลือ ${r.length} ซองใน${boxes(b).length>1?'กล่องนี้':'กล่อง'})`);return}
-  UI.sel=UI.side==='R'?r[r.length-n]:r[n-1];UI.pick={x:UI.sel,s:UI.side==='R'?'R':'L'};renderBoard();
+  if(!ns.length||ns.some(n=>n<1||n>r.length)){toast(`ใส่เลข 1–${r.length} (เหลือ ${r.length} ซองใน${boxes(b).length>1?'กล่องนี้':'กล่อง'})`);return}
+  const s=UI.side==='R'?'R':'L',xs=ns.map(n=>s==='R'?r[r.length-n]:r[n-1]);
+  if(UI.multi||xs.length>1){
+    if(UI.queue.length){toast('จดชุดเดิมให้เสร็จก่อน หรือกด “ยกเลิกทั้งชุด”');return}
+    UI.multi=true;xs.forEach(x=>{if(!UI.batch.some(it=>it.x===x))UI.batch.push({x,s})});renderBoard('pos');return}
+  UI.sel=xs[0];UI.pick={x:UI.sel,s};renderBoard();
 }
+/* ===== โหมดหลายซอง: คนซื้อหลายซองพร้อมกัน → ตำแหน่งทุกซองนับจากกล่องก่อนหยิบ ===== */
+function setMulti(on){UI.multi=on;if(!on){UI.batch=[]}renderBoard('pos')}
+function rmBatch(x){UI.batch=UI.batch.filter(it=>it.x!==x);renderBoard('pos')}
+function startBatch(){
+  const b=getB(S.cur);if(!UI.batch.length)return;
+  UI.qsnap={};
+  // เก็บคำทาย/ตำแหน่งของทุกซองก่อน เพราะทุกซองถูกเลือกจากกล่องสภาพเดียวกัน
+  UI.batch.forEach(it=>{UI.pick={x:it.x,s:it.s};try{UI.qsnap[it.x]=snapPred(b,it.x)}catch(e){UI.qsnap[it.x]=null}});
+  UI.pick=null;UI.queue=UI.batch.map(it=>it.x);UI.qn=UI.queue.length;UI.batch=[];
+  UI.sel=UI.queue[0];renderBoard();
+}
+function nextQ(){UI.sel=UI.queue.length?UI.queue[0]:null;if(!UI.queue.length){UI.qsnap={};UI.qn=0}}
+function skipQ(x){UI.queue=UI.queue.filter(y=>y!==x);delete UI.qsnap[x];nextQ();renderBoard(UI.sel?undefined:'pos')}
+function cancelQ(){UI.queue=[];UI.qsnap={};UI.qn=0;UI.sel=null;renderBoard('pos')}
 function saveNum(x){
   const b=getB(S.cur),v=parseInt($('#numIn').value);
   if(!v||v<1||v>NM(b)){toast(`ใส่เลข 1–${NM(b)}`);return}
@@ -1361,11 +1392,12 @@ function setMode(v){const b=getB(S.cur);b.mode=v;save();renderBoard()}
 function pushLog(b,x){b.log.push({x,prev:b.opened[x]?{...b.opened[x]}:null,seq:seqOf(b).slice(),pred:b.pred&&b.pred[x]?b.pred[x]:null});if(b.log.length>300)b.log.shift()}
 function mark(x,v){
   const b=getB(S.cur),seq=seqOf(b);
-  let sp=null;if(!b.opened[x]&&!(b.pred&&b.pred[x])){try{sp=snapPred(b,x)}catch(e){sp=null}}
+  let sp=null;if(!b.opened[x]&&!(b.pred&&b.pred[x])){sp=UI.qsnap[x]||null;if(!sp){try{sp=snapPred(b,x)}catch(e){sp=null}}}
   pushLog(b,x);
   b.opened[x]={v};if(!seq.includes(x))seq.push(x);
   if(sp){if(!b.pred||typeof b.pred!=='object')b.pred={};b.pred[x]=sp}
   UI.pick=null;
+  if(UI.queue.includes(x)){UI.queue=UI.queue.filter(y=>y!==x);delete UI.qsnap[x];nextQ();save();renderBoard(UI.sel?undefined:'pos');return}
   UI.sel=null;save();renderBoard('pos');
 }
 function unmark(x){
