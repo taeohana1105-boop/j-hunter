@@ -578,7 +578,7 @@ function whyHTML(b,p,P){
   const lim=[];
   if(st.n<6)lim.push(`ข้อมูลคู่เลขยังน้อย (${st.n} คู่)`);
   if(P.q<0.5)lim.push(`ร้านนี้สับพอใช้ (ดัชนี ${Math.round(P.q*100)}%) เลขที่ใกล้กันไม่ได้อยู่ใกล้กันเสมอ`);
-  const best=p.clues[0];if(best&&Math.abs(best.d)>=3)lim.push(`เลขที่ใกล้ที่สุดยังห่างไป ${Math.abs(best.d)} เลข ยิ่งห่างยิ่งเดายาก`);
+  const best=p.clues[0];if(best&&Math.abs(best.d)>=3)lim.push(`เลขที่ใกล้ที่สุดยังห่างไป ${Math.abs(best.d)} เลข ยิ่งห่างยิ่งคำนวณได้ยาก`);
   if(!(st.close>=2&&(P.fp>=0.65||P.fp<=0.35)))lim.push('ยังไม่รู้ทิศที่เลขเรียง ต้องเผื่อสองข้าง ช่วงเลยกว้าง');
   if(b.refill&&/,/.test(rangeText(b,p)))lim.push('มีซองที่ร้านย้ายมาเติม ช่วงเลยแตกเป็นหลายจุด');
   if(lim.length)lines.push(`ที่ยังไม่สูงกว่านี้เพราะ: ${lim.join(' · ')}`);
@@ -867,7 +867,7 @@ function pickCard(b,x,R,i,mode,T,EV){
   if(mode==='target'&&T){const bk=T.out.map(o=>({u:o.u,p:pOfNum(R,x,o.u)})).filter(o=>o.p>0.005).sort((a,c)=>c.p-a.p).slice(0,3);if(bk.length)extra.push('ตามล่า: '+bk.map(o=>`${pad(o.u)} ${pct(o.p)}`).join(' · '))}
   return `<div class="pick${cls}" role="button" tabindex="0" onclick="selPos(${x})">
     <div class="pk-top"><span class="pk-rank">${i+1}</span><span class="pk-pos">${boxPrefix(b,p.bx)}ซ้าย <b>${p.L}</b> / ขวา <b>${p.R}</b> <span class="muted small">· ซองเดิม #${x}</span></span><span class="pk-p">${main}</span></div>
-    <div class="pk-sub">${g?`น่าจะเป็นเลข ${g.map(o=>`<span class="pk-n${isHitV(b,o.u)?' hit':''}">${isHitV(b,o.u)?'★':''}${pad(o.u)} <small>${pct(o.p)}</small></span>`).join('')}`:'<span class="muted small">ยังเดาเลขไม่ได้</span>'}${ratio!=null?`<span class="muted small" style="margin-left:auto">สูงกว่าสุ่ม ${ratio.toFixed(1)} เท่า</span>`:''}</div>
+    <div class="pk-sub">${g?`น่าจะเป็นเลข ${g.map(o=>`<span class="pk-n${isHitV(b,o.u)?' hit':''}">${isHitV(b,o.u)?'★':''}${pad(o.u)} <small>${pct(o.p)}</small></span>`).join('')}`:'<span class="muted small">ข้อมูลยังไม่พอคำนวณเลข</span>'}${ratio!=null?`<span class="muted small" style="margin-left:auto">สูงกว่าสุ่ม ${ratio.toFixed(1)} เท่า</span>`:''}</div>
     ${extra.length?`<div class="small muted" style="margin-top:4px">${extra.join(' · ')}</div>`:''}
     ${R.E&&mode!=='target'?whyPack(b,x,R):''}
   </div>`;
@@ -922,16 +922,16 @@ function scoreOf(bs){
 const f1=v=>v<10?v.toFixed(1).replace(/\.0$/,''):Math.round(v)+'';
 function scoreHTML(sc,title){
   if(!sc.recs)return '';
-  const verdict=(a,r)=>{if(r<0.05)return['',''];const q=a/r;return q>=1.5?['good',`ดีกว่าเดามั่ว ${f1(q)} เท่า`]:q>=0.8?['same','พอ ๆ กับเดามั่ว']:['bad','แย่กว่าเดามั่ว']};
+  const verdict=(a,r)=>{if(r<0.05)return['',''];const q=a/r;return q>=1.5?['good',`ดีกว่าสุ่ม ${f1(q)} เท่า`]:q>=0.8?['same','พอ ๆ กับสุ่ม']:['bad','แย่กว่าสุ่ม']};
   const row=(ic,head,a,n,unit,r,expl)=>{if(!n)return'';const [c,t]=verdict(a,r);
     return `<div class="sc2"><div class="sc2-top"><span class="sc2-ic">${ic}</span><span class="sc2-h">${head}</span><b class="sc2-n">${a} <small>จาก ${n} ${unit}</small></b></div>
-      <div class="sc2-sub">ถ้าเดามั่ว ๆ จะได้ราว ${f1(r)} ${unit}${t?` → <span class="v-${c}">${t}</span>`:''}</div>
+      <div class="sc2-sub">ถ้าเลือกแบบสุ่มจะได้ราว ${f1(r)} ${unit}${t?` → <span class="v-${c}">${t}</span>`:''}</div>
       <div class="sc2-ex">${expl}</div></div>`};
   const body=row('🎯','ฮิตออกจากซองที่แอปแนะนำ',sc.ct,sc.nh,'ใบ',sc.rCt,'ฮิตที่ออกมา อยู่ใน 5 ซองแรกที่แอปแนะนำตอนนั้นกี่ใบ — ตัวนี้สำคัญที่สุด')+
-    row('✓','ทายเลขในซองถูกเป๊ะ',sc.ex,sc.n,'ซอง',sc.rEx,'ก่อนเปิดซอง แอปเดาว่าเป็นเลขอะไร แล้วออกมาตรงเลข')+
-    row('≈','ทายเลขใกล้เคียง',sc.nr,sc.n,'ซอง',sc.rNr,'เลขที่ออกห่างจากที่แอปเดาไม่เกิน 2 หรืออยู่ใน 3 เลขที่แอปเดา')+
+    row('✓','คำนวณเลขในซองถูกเป๊ะ',sc.ex,sc.n,'ซอง',sc.rEx,'ก่อนเปิดซอง แอปคำนวณว่าเลขไหนมีโอกาสสูงสุด แล้วออกมาตรงเลขนั้น')+
+    row('≈','คำนวณเลขได้ใกล้เคียง',sc.nr,sc.n,'ซอง',sc.rNr,'เลขที่ออกห่างจากเลขที่แอปคำนวณไว้ไม่เกิน 2 หรืออยู่ใน 3 เลขที่แอปคำนวณไว้')+
     (sc.nt?row('🔎','เลขที่ตามล่า ออกจากซองที่แอปชี้',sc.tt,sc.nt,'ครั้ง',sc.rT,'เลขที่ใส่ไว้ในช่องตามล่าเลข ออกมาจาก 5 ซองแรกที่แอปชี้กี่ครั้ง'):'');
-  return `<div class="score"><div class="sc-h"><span>✅ แอปทายแม่นแค่ไหน${title?` · ${title}`:''}</span><span class="small muted">ตรวจจาก ${sc.recs} ซองที่จด</span></div>${body}</div>`;
+  return `<div class="score"><div class="sc-h"><span>✅ แอปคำนวณแม่นแค่ไหน${title?` · ${title}`:''}</span><span class="small muted">ตรวจจาก ${sc.recs} ซองที่จด</span></div>${body}</div>`;
 }
 /* ===== ป้ายประวัติ: “ซ้าย 7 (#8)” — # คือตำแหน่งเดิมของซอง ส่วนซ้าย/ขวาคือที่นับตอนหยิบ ===== */
 const _rp=new Map();
