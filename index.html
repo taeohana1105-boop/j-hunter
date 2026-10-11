@@ -213,10 +213,15 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
 .stb.on{color:var(--ink)}.stb.on i{background:var(--gold)}
 .stb b{font-family:var(--num);text-align:right;font-weight:600}
 @media(max-width:520px){.stb{grid-template-columns:120px 1fr 36px}}
-.legend2{margin:8px auto 0;max-width:780px;display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted)}
-.legend2 div{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center}
-.legend2 b{color:var(--gold2);font-weight:600;min-width:120px}
-.legend2 em{display:inline-block;width:9px;height:14px;border-radius:2px;vertical-align:-2px;margin-right:5px}
+.sc2{background:rgba(0,0,0,.18);border-radius:10px;padding:9px 12px;margin-top:6px}
+.sc2-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.sc2-ic{width:20px;text-align:center}
+.sc2-h{flex:1;min-width:150px;color:var(--ink);font-weight:600;font-size:14px}
+.sc2-n{font-family:var(--num);font-size:20px;color:var(--ok)}
+.sc2-n small{font-size:12px;color:var(--muted);font-weight:400}
+.sc2-sub{font-size:13px;margin:2px 0 0 28px}
+.sc2-ex{font-size:11px;color:var(--muted);margin:2px 0 0 28px}
+.v-good{color:var(--ok);font-weight:700}.v-same{color:var(--muted);font-weight:700}.v-bad{color:#FF8A8A;font-weight:700}
 </style>
 </head>
 <body>
@@ -914,12 +919,17 @@ function scoreOf(bs){
 const f1=v=>v<10?v.toFixed(1).replace(/\.0$/,''):Math.round(v)+'';
 function scoreHTML(sc,title){
   if(!sc.recs)return '';
-  const cell=(a,n,r,lab)=>`<div class="sc"><b>${n?`${a}/${n}`:'–'}</b><span>${lab}</span>${n?`<i>สุ่มได้ราว ${f1(r)}${r>0&&a>r?` · ดีกว่า ×${f1(a/r)}`:''}</i>`:''}</div>`;
-  return `<div class="score"><div class="sc-h"><span>✅ ผลทายจริง${title?` · ${title}`:''}</span><span class="small muted">ให้คะแนนจากคำทายก่อนเปิดซอง ${sc.recs} ซอง</span></div>
-    <div class="sc-row">${cell(sc.ex,sc.n,sc.rEx,'ทายเลขตรง')}${cell(sc.nr,sc.n,sc.rNr,'ทายใกล้ (±2 / ท็อป 3)')}${cell(sc.ct,sc.nh,sc.rCt,'ฮิตออกจากซองท็อป 5')}</div>
-    ${sc.nt?`<div class="small" style="margin-top:6px;color:var(--ok2)">🔎 เลขที่ตามล่าออกมา ${sc.nt} ครั้ง · อยู่ในท็อป 5 ที่แอปชี้ ${sc.tt} ครั้ง (สุ่มได้ราว ${f1(sc.rT)})</div>`:''}</div>`;
+  const verdict=(a,r)=>{if(r<0.05)return['',''];const q=a/r;return q>=1.5?['good',`ดีกว่าเดามั่ว ${f1(q)} เท่า`]:q>=0.8?['same','พอ ๆ กับเดามั่ว']:['bad','แย่กว่าเดามั่ว']};
+  const row=(ic,head,a,n,unit,r,expl)=>{if(!n)return'';const [c,t]=verdict(a,r);
+    return `<div class="sc2"><div class="sc2-top"><span class="sc2-ic">${ic}</span><span class="sc2-h">${head}</span><b class="sc2-n">${a} <small>จาก ${n} ${unit}</small></b></div>
+      <div class="sc2-sub">ถ้าเดามั่ว ๆ จะได้ราว ${f1(r)} ${unit}${t?` → <span class="v-${c}">${t}</span>`:''}</div>
+      <div class="sc2-ex">${expl}</div></div>`};
+  const body=row('🎯','ฮิตออกจากซองที่แอปแนะนำ',sc.ct,sc.nh,'ใบ',sc.rCt,'ฮิตที่ออกมา อยู่ใน 5 ซองแรกที่แอปแนะนำตอนนั้นกี่ใบ — ตัวนี้สำคัญที่สุด')+
+    row('✓','ทายเลขในซองถูกเป๊ะ',sc.ex,sc.n,'ซอง',sc.rEx,'ก่อนเปิดซอง แอปเดาว่าเป็นเลขอะไร แล้วออกมาตรงเลข')+
+    row('≈','ทายเลขใกล้เคียง',sc.nr,sc.n,'ซอง',sc.rNr,'เลขที่ออกห่างจากที่แอปเดาไม่เกิน 2 หรืออยู่ใน 3 เลขที่แอปเดา')+
+    (sc.nt?row('🔎','เลขที่ตามล่า ออกจากซองที่แอปชี้',sc.tt,sc.nt,'ครั้ง',sc.rT,'เลขที่ใส่ไว้ในช่องตามล่าเลข ออกมาจาก 5 ซองแรกที่แอปชี้กี่ครั้ง'):'');
+  return `<div class="score"><div class="sc-h"><span>✅ แอปทายแม่นแค่ไหน${title?` · ${title}`:''}</span><span class="small muted">ตรวจจาก ${sc.recs} ซองที่จด</span></div>${body}</div>`;
 }
-
 /* ===== ป้ายประวัติ: “ซ้าย 7 (#8)” — # คือตำแหน่งเดิมของซอง ส่วนซ้าย/ขวาคือที่นับตอนหยิบ ===== */
 const _rp=new Map();
 function replayLR(cfg,seq){
@@ -1245,11 +1255,7 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
       ${b.refill?`<span class="small muted">กั้นทุก</span><input type="number" id="secIn" inputmode="numeric" min="1" max="100" value="${b.sec}" onchange="setSec(this.value)">
       <div class="seg"><button aria-pressed="${b.refillAt!=='end'}" onclick="setRA('gap')">ตรงที่หยิบ</button><button aria-pressed="${b.refillAt==='end'}" onclick="setRA('end')">ท้ายช่อง</button></div>`:''}
     </div>
-    <div class="legend2">
-      <div><b>สีในกล่อง</b><span><em style="background:linear-gradient(#B02A40,#4A0D16)"></em>แดง = ซองที่ยังไม่เปิด</span><span><em style="background:rgba(255,255,255,.2)"></em>เทาเตี้ย = เปิดแล้ว ได้เกลือ</span><span><em style="background:#E8CF8E"></em>ทอง = ฮิตที่ออกแล้ว</span></div>
-      <div><b>แท่งส้มเหนือกล่อง</b><span>ยิ่งสูง = ซองนั้น${RB==='target'?'ยิ่งน่าจะเป็นเลขที่ตามล่า':RB==='ev'?'ยิ่งคุ้ม':'ยิ่งน่าจะมีฮิต'}</span></div>
-      <div><b>สีเขียว = แอปทายถูก</b><span class="muted">(แอปทายไว้ก่อนเปิดซอง แล้วมาตรวจหลังเปิด)</span><span><em style="background:var(--ok)"></em>เขียวเข้ม = ทายเลขตรงเป๊ะ</span><span><em style="background:rgba(155,231,184,.55)"></em>เขียวอ่อน = ทายเลขใกล้เคียง</span><span><em style="background:#E8CF8E;box-shadow:inset 0 0 0 2px var(--ok)"></em>ทองขอบเขียว = ซองที่แอปแนะนำ แล้วฮิตออกจริง</span></div>
-    </div>
+    <div class="legend"><span><em style="background:linear-gradient(90deg,#4A0D16,#B02A40)"></em>ซองที่เหลือ</span><span><em style="background:rgba(255,255,255,.12)"></em>เปิดแล้ว (เกลือ)</span><span><em style="background:#E8CF8E"></em>ฮิตที่ออก</span><span><em style="background:rgb(255,138,61)"></em>แท่งส้ม = ${RB==='target'?'โอกาสเป็นเลขที่ตามล่า':RB==='ev'?'ความคุ้ม':'โอกาสฮิต'}</span><span><em style="background:var(--ok)"></em>ทายตรง</span><span><em style="background:rgba(155,231,184,.55)"></em>ทายใกล้</span></div>
     ${R.U&&!b.closed?`<div class="pos-pick" style="margin-top:14px">
       ${BX.length>1?`<div class="seg">${BX.map(bx=>`<button aria-pressed="${UI.box===bx.i}" onclick="UI.box=${bx.i};renderBoard('pos')">กล่อง ${bx.i+1}</button>`).join('')}</div>`:''}
       <span class="small">ซองที่</span>
