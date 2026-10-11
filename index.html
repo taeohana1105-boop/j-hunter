@@ -166,6 +166,44 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
 .meter .ci{position:absolute;top:-3px;height:14px;border-radius:7px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:12px;color:var(--muted);margin-top:4px}
 .legend em{display:inline-block;width:8px;height:14px;border-radius:2px;vertical-align:-2px;margin-right:5px}
+
+/* ===== ผลทาย (สีเขียว) / ตามล่าเลข / ความคุ้ม ===== */
+:root{--ok:#3DDC84;--ok2:#9BE7B8}
+.slg.g-ex{background:var(--ok);height:18%}
+.slg.g-nr{background:rgba(155,231,184,.55)}
+.slg.hit.g-ct{box-shadow:inset 0 0 0 2px var(--ok)}
+.slg.hit.g-ex{background:linear-gradient(var(--ok),#1E7A47);height:26%}
+.side li.g-ex{background:rgba(61,220,132,.22);color:#C9F5DA}
+.side li.g-nr{background:rgba(155,231,184,.10);box-shadow:inset 3px 0 0 var(--ok2)}
+.side li.g-ct{box-shadow:inset 3px 0 0 var(--ok)}
+.side li .gb{margin-left:auto;font-size:10px;font-family:var(--body);font-weight:700;padding:1px 6px;border-radius:99px;background:rgba(61,220,132,.2);color:var(--ok);white-space:nowrap}
+.side li .gb.nr{background:rgba(155,231,184,.12);color:var(--ok2)}
+.side li .gb.ct{background:rgba(201,164,92,.22);color:var(--gold2)}
+.side li{flex-wrap:wrap}.side li .lb{color:var(--ink);font-family:var(--body);white-space:nowrap}
+.side li.arch{cursor:default;opacity:.8}
+.side .rnd{font-size:11px;color:var(--gold);margin:10px 0 4px;letter-spacing:.5px;flex-basis:100%}
+.score{background:linear-gradient(160deg,rgba(61,220,132,.10),rgba(61,220,132,.02));border:1px solid rgba(61,220,132,.35);border-radius:12px;padding:10px 12px;margin-bottom:14px;font-size:13px}
+.score .sc-h{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--ok2);font-weight:600;margin-bottom:6px}
+.score .sc-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.score .sc{background:rgba(0,0,0,.18);border-radius:10px;padding:8px;text-align:center}
+.score .sc b{display:block;font-family:var(--num);font-size:20px;color:var(--ok)}
+.score .sc span{display:block;font-size:11px;color:var(--muted)}
+.score .sc i{display:block;font-style:normal;font-size:11px;color:var(--ok2)}
+.hunt{margin-top:12px;padding:12px;border-radius:12px;background:var(--panel2);border:1px solid rgba(61,220,132,.3)}
+.hunt .row input{flex:1;min-width:120px;font-family:var(--num);font-weight:700;font-size:16px;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:8px 10px}
+.tg{padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.tg:last-child{border:0}
+.tg .tp{font-family:var(--num);font-weight:700;color:var(--ok)}
+.tgpk{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tgpk button{background:var(--panel);border:1px solid rgba(61,220,132,.45);color:var(--ok2);border-radius:99px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:var(--num)}
+.rankseg{margin-top:10px}
+.pick.tgt{border-color:rgba(61,220,132,.5)}
+.pick.tgt .pk-p,.pick.tgt .pk-rank{color:var(--ok)}
+.ev-pos{color:var(--ok)}.ev-neg{color:#FF8A8A}
+.evbar{margin-top:10px;font-size:13px;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.18)}
+.stats.s5{grid-template-columns:repeat(5,1fr)}
+@media(max-width:620px){.stats.s5{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:520px){.score .sc-row{grid-template-columns:repeat(3,1fr)}.score .sc b{font-size:17px}}
 </style>
 </head>
 <body>
@@ -205,7 +243,13 @@ function val(o){if(!o)return null;if(o.v!==undefined)return o.v;if(o.type==='hit
 const isHitV=(b,v)=>v!=null&&hitList(b).includes(v);
 function obsOf(b){return Object.entries(b.opened).map(([k,o])=>({pos:+k,v:val(o)})).filter(o=>o.v!=null)}
 function foundHits(b){return obsOf(b).filter(o=>isHitV(b,o.v)).map(o=>({n:o.v,pos:o.pos}))}
-function usedNums(b){return new Map(obsOf(b).map(o=>[o.v,o.pos]))}
+/* รอบก่อนร้านสับใหม่: เลขที่ออกไปแล้วในรอบก่อนจะไม่อยู่ในกล่องอีก (ตำแหน่ง 0 = ออกในรอบก่อน) */
+const NM=b=>b.numMax||b.total;
+const archOf=b=>Array.isArray(b.archive)?b.archive:[];
+function roundObs(opened){return Object.entries(opened||{}).map(([k,o])=>({pos:+k,v:val(o)})).filter(o=>o.v!=null)}
+function archNums(b){const m=new Map();archOf(b).forEach((r,ri)=>roundObs(r.opened).forEach(o=>m.set(o.v,{round:ri+1,pos:o.pos})));return m}
+function usedNums(b){const m=new Map();archNums(b).forEach((_,v)=>m.set(v,0));obsOf(b).forEach(o=>m.set(o.v,o.pos));return m}
+function foundHitsAll(b){const a=[];archOf(b).forEach(r=>roundObs(r.opened).forEach(o=>{if(isHitV(b,o.v))a.push(o.v)}));return a.concat(foundHits(b).map(o=>o.n))}
 function numLabel(b,v){return v==null?'เกลือ (ไม่รู้เลข)':isHitV(b,v)?'★ '+pad(v):pad(v)}
 
 /* ===== กล่อง / นับตำแหน่ง ===== */
@@ -247,9 +291,14 @@ function lr(b,x){const bx=boxOf(b,x),r=remainIn(b,bx),k=r.indexOf(x);return{bx,k
 function boxPrefix(b,bx){return boxes(b).length>1?`กล่อง ${bx.i+1} · `:''}
 
 /* ===== วัดความสับ: เลขที่ติดกัน (เช่น 045 กับ 046) อยู่ห่างกันกี่ซอง ===== */
-function pairCount(b){
+const P0=()=>({n:0,close:0,sk:0,fw:0,ks:[]});
+const addP=(a,c)=>({n:a.n+c.n,close:a.close+c.close,sk:a.sk+c.sk,fw:a.fw+c.fw,ks:a.ks.concat(c.ks)});
+/* นับทุกรอบของกระดาน (รอบก่อนร้านสับใหม่ด้วย) แยกกันต่อรอบ เพราะตำแหน่งคนละกล่อง */
+function pairCount(b){return [roundObs(b.opened),...archOf(b).map(r=>roundObs(r.opened))].map(pairObs).reduce(addP,P0())}
+function archPairs(b){return archOf(b).map(r=>pairObs(roundObs(r.opened))).reduce(addP,P0())}
+function pairObs(list){
   // ดูทุกคู่ซองที่เลขห่างกันไม่เกิน 5 (เช่น 015 กับ 017): ถ้าตำแหน่งก็ใกล้กัน = ร้านสับไม่ทั่ว
-  const o=obsOf(b).sort((a,c)=>a.v-c.v);let n=0,close=0,sk=0,fw=0;const ks=[];
+  const o=list.slice().sort((a,c)=>a.v-c.v);let n=0,close=0,sk=0,fw=0;const ks=[];
   for(let i=0;i<o.length;i++)for(let j=i+1;j<o.length;j++){
     const dv=o[j].v-o[i].v;if(dv>5)break;const d=o[j].pos-o[i].pos,dp=Math.abs(d);n++;
     if(dp<=3*dv){close++;sk+=dv;if(d>0)fw++;ks.push(dp/dv)}
@@ -333,7 +382,7 @@ function model(b){
   const N=b.total,P=params(b),obs=obsOf(b);
   const un=[];for(let x=1;x<=N;x++)if(!b.opened[x])un.push(x);
   const used=usedNums(b);
-  const unseen=[];for(let u=1;u<=N;u++)if(!used.has(u))unseen.push(u);
+  const unseen=[];for(let u=1;u<=NM(b);u++)if(!used.has(u))unseen.push(u);
   const U=un.length;
   function dist(u){
     const p=new Float64Array(U);
@@ -347,11 +396,12 @@ function model(b){
     for(let i=0;i<U;i++)p[i]=M*p[i]/tot+(1-M)/U;
     return{p,M};
   }
+  const dc=new Map(),distC=u=>{if(!dc.has(u))dc.set(u,dist(u));return dc.get(u)};
   const HL=new Set(hitList(b)),remHits=unseen.filter(u=>HL.has(u));
   const H=remHits.length,base=U?Math.min(1,H/U):0;
   const miss=new Float64Array(U).fill(1),perHit=[];
   remHits.forEach(u=>{
-    const {p,M}=dist(u);let best=0;
+    const {p,M}=distC(u);let best=0;
     for(let i=0;i<U;i++){miss[i]*=(1-p[i]);if(p[i]>p[best])best=i}
     if(M>0.12){
       let mu=0,sw=0;p.forEach((v,i)=>{const e=v-(1-M)/U;if(e>0){mu+=e*un[i];sw+=e}});mu/=sw;
@@ -370,12 +420,12 @@ function model(b){
   const top=spread?un.slice().sort((a,c)=>prob[c]-prob[a]).slice(0,6):[];
   function guess(x){ // เลขที่น่าจะอยู่ในซอง x
     const i=un.indexOf(x);if(i<0||!obs.length||P.q<=0)return null;
-    const sc=unseen.map(u=>({u,p:dist(u).p[i]})).sort((a,c)=>c.p-a.p);
+    const sc=unseen.map(u=>({u,p:distC(u).p[i]})).sort((a,c)=>c.p-a.p);
     const top3=sc.slice(0,3),sum=top3.reduce((a,c)=>a+c.p,0);
     if(top3[0].p<1.5/U)return null;
-    return{nums:top3.map(t=>t.u).sort((a,c)=>a-c),sum};
+    return{nums:top3.map(t=>t.u).sort((a,c)=>a-c),sum,ranked:top3.map(t=>[t.u,t.p])};
   }
-  return{N,H,U,base,prob,mx,mn,spread,top,perHit,P,guess,obsN:obs.length};
+  return{N,H,U,base,prob,mx,mn,spread,top,perHit,P,guess,obsN:obs.length,un,unseen,nUnseen:unseen.length,dist:distC,idx:new Map(un.map((x,i)=>[x,i]))};
 }
 function rangeText(b,p){
   const bx=boxOf(b,p.center),r=remainIn(b,bx);
@@ -437,86 +487,88 @@ const pctOr=v=>v==null?'–':pct(v);
    3) Bayesian model averaging: ไม่เดาค่า c, fp, λ ค่าเดียว แต่ถ่วงทุกค่าบนกริดตาม posterior
    4) Sinkhorn: ปรับเมทริกซ์ให้ “หนึ่งซองหนึ่งเลข และหนึ่งเลขหนึ่งซอง” (เงื่อนไขการเรียงสับเปลี่ยน) */
 function jhEngine(I){
-  const N=I.N,K=6,NP=N+1;
-  const known=new Int32Array(N+1),isHit=new Uint8Array(N+1),used=new Uint8Array(N+1),noHit=new Uint8Array(N+1);
+  // N = จำนวนซอง (ตำแหน่ง), M = ช่วงเลขทั้งหมด (หลังร้านสับใหม่ ซองเหลือน้อยกว่าช่วงเลข)
+  const N=I.N,M=I.M||I.N,K=6,NP=N+1,VP=M+1;
+  const known=new Int32Array(NP),isHit=new Uint8Array(VP),used=new Uint8Array(VP),noHit=new Uint8Array(NP);
   I.known.forEach(([p,v])=>{known[p]=v;used[v]=1});
-  I.hits.forEach(h=>{if(h>=1&&h<=N)isHit[h]=1});
+  (I.excl||[]).forEach(v=>{if(v>=1&&v<=M)used[v]=1});
+  I.hits.forEach(h=>{if(h>=1&&h<=M)isHit[h]=1});
   I.noHit.forEach(p=>noHit[p]=1);
-  // ค่าที่เป็นไปได้ของแต่ละซอง
-  const allow=new Float64Array(NP*NP);
+  const allow=new Float64Array(NP*VP);
   for(let p=1;p<=N;p++){
-    if(known[p]){allow[p*NP+known[p]]=1;continue}
-    for(let v=1;v<=N;v++)if(!used[v]&&!(noHit[p]&&isHit[v]))allow[p*NP+v]=1;
+    if(known[p]){allow[p*VP+known[p]]=1;continue}
+    for(let v=1;v<=M;v++)if(!used[v]&&!(noHit[p]&&isHit[v]))allow[p*VP+v]=1;
   }
-  const alpha=new Float64Array(NP*NP),beta=new Float64Array(NP*NP),tmp=new Float64Array(NP),h=new Float64Array(2*K+1);
+  const alpha=new Float64Array(NP*VP),beta=new Float64Array(NP*VP),tmp=new Float64Array(VP),h=new Float64Array(2*K+1);
   // ลำดับโซ่: stride 1 = ซองติดกัน, stride 2 = เลขต่อกันแบบเว้นทีละซอง (สับแบบแบ่งสองกองแล้วสลับเข้าหากัน)
-  const chainsOf=st=>{const cs=[];for(let k=0;k<st;k++){const a=[];for(let p=1+k;p<=N;p+=st)a.push(p);cs.push(a)}return cs};
+  const chainsOf=st=>{const cs=[];for(let k=0;k<st;k++){const a=[];for(let p=1+k;p<=N;p+=st)a.push(p);if(a.length)cs.push(a)}return cs};
   function run(c,fp,lam,st,wantPost){
     const Z=(1-lam)/(1-Math.pow(lam,K));
     for(let d=-K;d<=K;d++){const a=Math.abs(d);h[d+K]=a===0?0:(d>0?fp:1-fp)*Z*Math.pow(lam,a-1)}
-    const u=(1-c)/N;let logL=0;const g=wantPost?new Float64Array(NP*NP):null;
+    const u=(1-c)/M;let logL=0;const g=wantPost?new Float64Array(NP*VP):null;
     for(const seq of chainsOf(st)){
       const L=seq.length;
-      let s=0,o0=seq[0]*NP;for(let v=1;v<=N;v++){alpha[o0+v]=allow[o0+v]/N;s+=alpha[o0+v]}
+      let s=0,o0=seq[0]*VP;for(let v=1;v<=M;v++){alpha[o0+v]=allow[o0+v]/M;s+=alpha[o0+v]}
       if(!(s>0))return{logL:-1e300};
-      for(let v=1;v<=N;v++)alpha[o0+v]/=s;logL+=Math.log(s);
+      for(let v=1;v<=M;v++)alpha[o0+v]/=s;logL+=Math.log(s);
       for(let i=1;i<L;i++){
-        const prev=seq[i-1]*NP,cur=seq[i]*NP;let tot=0;
-        for(let v=1;v<=N;v++){const al=allow[cur+v];if(!al){alpha[cur+v]=0;continue}
-          let band=0;for(let d=-K;d<=K;d++){const w=v-d;if(w>=1&&w<=N)band+=alpha[prev+w]*h[d+K]}
+        const prev=seq[i-1]*VP,cur=seq[i]*VP;let tot=0;
+        for(let v=1;v<=M;v++){const al=allow[cur+v];if(!al){alpha[cur+v]=0;continue}
+          let band=0;for(let d=-K;d<=K;d++){const w=v-d;if(w>=1&&w<=M)band+=alpha[prev+w]*h[d+K]}
           const x=(u+c*band)*al;alpha[cur+v]=x;tot+=x}
         if(!(tot>0))return{logL:-1e300};
-        for(let v=1;v<=N;v++)alpha[cur+v]/=tot;logL+=Math.log(tot);
+        for(let v=1;v<=M;v++)alpha[cur+v]/=tot;logL+=Math.log(tot);
       }
       if(!wantPost)continue;
-      const oL=seq[L-1]*NP;for(let v=1;v<=N;v++)beta[oL+v]=1;
+      const oL=seq[L-1]*VP;for(let v=1;v<=M;v++)beta[oL+v]=1;
       for(let i=L-2;i>=0;i--){
-        const nx=seq[i+1]*NP,cur=seq[i]*NP;let S=0;
-        for(let w=1;w<=N;w++){tmp[w]=allow[nx+w]*beta[nx+w];S+=tmp[w]}
+        const nx=seq[i+1]*VP,cur=seq[i]*VP;let S=0;
+        for(let w=1;w<=M;w++){tmp[w]=allow[nx+w]*beta[nx+w];S+=tmp[w]}
         let tot=0;
-        for(let v=1;v<=N;v++){let band=0;for(let d=-K;d<=K;d++){const w=v+d;if(w>=1&&w<=N)band+=tmp[w]*h[d+K]}
+        for(let v=1;v<=M;v++){let band=0;for(let d=-K;d<=K;d++){const w=v+d;if(w>=1&&w<=M)band+=tmp[w]*h[d+K]}
           const x=u*S+c*band;beta[cur+v]=x;tot+=x}
-        for(let v=1;v<=N;v++)beta[cur+v]/=tot;
+        for(let v=1;v<=M;v++)beta[cur+v]/=tot;
       }
-      for(const p of seq){let t=0;const o=p*NP;for(let v=1;v<=N;v++){const x=alpha[o+v]*beta[o+v];g[o+v]=x;t+=x}if(t>0)for(let v=1;v<=N;v++)g[o+v]/=t}
+      for(const p of seq){let t=0;const o=p*VP;for(let v=1;v<=M;v++){const x=alpha[o+v]*beta[o+v];g[o+v]=x;t+=x}if(t>0)for(let v=1;v<=M;v++)g[o+v]/=t}
     }
     return{logL,g};
   }
-  // กริดพารามิเตอร์ + prior
+  // กริดพารามิเตอร์ + prior (prior ของ c มาจากกระดานเก่าของร้าน และจากคะแนนความแม่นจริง)
   const Cs=I.fixC!=null?[I.fixC]:[0.02,0.1,0.22,0.36,0.5,0.64,0.78,0.92];
   const Fs=[0.08,0.25,0.5,0.75,0.92],Ls=[0.15,0.5],Ss=[1,2];
   const P=I.prior||{ca:1,cb:1};
   const lp=(x,a,b)=>(a-1)*Math.log(x)+(b-1)*Math.log(1-x);
+  const fpP=I.fpPrior||{a:1,b:1};
   const grid=[];
-  for(const st of Ss)for(const c of Cs)for(const fp of Fs)for(const lam of Ls){const r=run(c,fp,lam,st,false);grid.push({c,fp,lam,st,lw:r.logL+lp(c,P.ca,P.cb)+(st===1?0:Math.log(0.6))})}
+  for(const st of Ss)for(const c of Cs)for(const fp of Fs)for(const lam of Ls){const r=run(c,fp,lam,st,false);grid.push({c,fp,lam,st,lw:r.logL+lp(c,P.ca,P.cb)+lp(fp,fpP.a,fpP.b)+(st===1?Math.log(1-(I.pS2||0.375)):Math.log(I.pS2||0.375))})}
   const mx=Math.max(...grid.map(x=>x.lw));let W=0;grid.forEach(x=>{x.w=Math.exp(x.lw-mx);W+=x.w});grid.forEach(x=>x.w/=W);
-  // ถ่วงเฉลี่ย posterior ของแต่ละค่า (ข้ามค่าที่น้ำหนักน้อยมาก เพื่อความเร็ว)
-  const G=new Float64Array(NP*NP);let used_w=0;
+  const G=new Float64Array(NP*VP);let used_w=0;
   grid.slice().sort((a,b)=>b.w-a.w).forEach(x=>{if(x.w<0.004&&used_w>0.98)return;const r=run(x.c,x.fp,x.lam,x.st,true);for(let i=0;i<G.length;i++)G[i]+=x.w*r.g[i];used_w+=x.w});
-  // Sinkhorn บนซองที่ยังไม่รู้เลข × เลขที่ยังไม่เห็น
-  const fpos=[],fval=[];for(let p=1;p<=N;p++)if(!known[p])fpos.push(p);for(let v=1;v<=N;v++)if(!used[v])fval.push(v);
-  if(fpos.length===fval.length&&fpos.length){
+  // Sinkhorn: แต่ละซองมีหนึ่งเลข / แต่ละเลขที่เหลืออยู่ได้ไม่เกินหนึ่งซอง (ถ้าเลขมากกว่าซอง คอลัมน์รวม = ซอง/เลข)
+  const fpos=[],fval=[];for(let p=1;p<=N;p++)if(!known[p])fpos.push(p);for(let v=1;v<=M;v++)if(!used[v])fval.push(v);
+  if(fpos.length&&fval.length){
+    const colT=Math.min(1,fpos.length/fval.length);
     for(let it=0;it<30;it++){
-      for(const p of fpos){let t=0;for(const v of fval)t+=G[p*NP+v];if(t>0)for(const v of fval)G[p*NP+v]/=t}
-      for(const v of fval){let t=0;for(const p of fpos)t+=G[p*NP+v];if(t>0)for(const p of fpos)G[p*NP+v]/=t}
+      for(const p of fpos){let t=0;for(const v of fval)t+=G[p*VP+v];if(t>0)for(const v of fval)G[p*VP+v]/=t}
+      for(const v of fval){let t=0;for(const p of fpos)t+=G[p*VP+v];if(t>0)for(const p of fpos)G[p*VP+v]*=colT/t}
     }
-    for(const p of fpos){let t=0;for(const v of fval)t+=G[p*NP+v];if(t>0)for(const v of fval)G[p*NP+v]/=t}
+    for(const p of fpos){let t=0;for(const v of fval)t+=G[p*VP+v];if(t>0)for(const v of fval)G[p*VP+v]/=t}
   }
   const phit=new Float64Array(NP);
-  for(const p of fpos){let s=0;for(const v of fval)if(isHit[v])s+=G[p*NP+v];phit[p]=Math.min(1,s)}
-  // posterior ของพารามิเตอร์
+  for(const p of fpos){if(noHit[p])continue;let s=0;for(const v of fval)if(isHit[v])s+=G[p*VP+v];phit[p]=Math.min(1,s)}
   const marg=(key,vals)=>vals.map(x=>({x,w:grid.filter(g=>g[key]===x).reduce((a,g)=>a+g.w,0)}));
   const cm=marg('c',Cs),fm=marg('fp',Fs),lm=marg('lam',Ls),sm=marg('st',Ss);
   const mean=m=>m.reduce((a,o)=>a+o.x*o.w,0);
   const q=(m,t)=>{let a=0;for(const o of m){a+=o.w;if(a>=t)return o.x}return m[m.length-1].x};
-  return{G,phit,fpos,fval,post:{c:mean(cm),cLo:q(cm,0.05),cHi:q(cm,0.95),cDist:cm,fp:mean(fm),lam:mean(lm),pStride2:(sm.find(o=>o.x===2)||{w:0}).w,pDir:fm.filter(o=>o.x>0.5).reduce((a,o)=>a+o.w,0)-fm.filter(o=>o.x<0.5).reduce((a,o)=>a+o.w,0)}};
+  return{G,VP,M,phit,fpos,fval,post:{c:mean(cm),cLo:q(cm,0.05),cHi:q(cm,0.95),cDist:cm,fp:mean(fm),lam:mean(lm),pStride2:(sm.find(o=>o.x===2)||{w:0}).w,pDir:fm.filter(o=>o.x>0.5).reduce((a,o)=>a+o.w,0)-fm.filter(o=>o.x<0.5).reduce((a,o)=>a+o.w,0)}};
 }
 
 
 /* ===== เครื่องคำนวณแบบเบย์ (ทำงานเบื้องหลังใน Web Worker) ===== */
 const ENG={cache:new Map(),busy:null,queue:null,worker:null,failed:false};
 function histPairs(b){
-  return S.boards.filter(x=>x.shop===b.shop&&x.closed&&x.id!==b.id).map(pairCount).reduce((a,c)=>({n:a.n+c.n,close:a.close+c.close,sk:a.sk+c.sk}),{n:0,close:0,sk:0});
+  // กระดานเก่าของร้าน + รอบก่อนสับใหม่ของกระดานนี้ = นิสัยการสับที่รู้มาก่อน
+  return S.boards.filter(x=>x.shop===b.shop&&x.closed&&x.id!==b.id).map(pairCount).reduce(addP,archPairs(b));
 }
 function engInput(b){
   const m=b.mode||'auto';if(m==='off')return null;
@@ -524,13 +576,17 @@ function engInput(b){
   const noHit=Object.entries(b.opened).filter(([k,o])=>val(o)==null).map(([k])=>+k);
   const h=histPairs(b);let ca=1,cb=1;
   if(h.n>=3){const m0=clamp((h.sk+1)/(h.sk+(h.n-h.close)+3),0.05,0.9),k=Math.min(20,2+h.n);ca=1+k*m0;cb=1+k*(1-m0)}
+  // ทิศที่เลขเรียงจากข้อมูลเก่า (prior อ่อน ๆ เผื่อร้านวางกลับด้าน)
+  let fpPrior=null;if(h.close>=3){const f=clamp((h.fw+1)/(h.close+2),0.1,0.9),k=Math.min(6,h.close/2);fpPrior={a:1+k*f,b:1+k*(1-f)}}
   const fixC={low:0.3,mid:0.55,high:0.8}[m];
-  return{N:b.total,hits:hitList(b),known:obs.map(o=>[o.pos,o.v]).sort((a,c)=>a[0]-c[0]),noHit:noHit.sort((a,c)=>a-c),prior:{ca,cb},fixC:fixC==null?null:fixC,hist:h.n};
+  const inp={N:b.total,M:NM(b),excl:[...archNums(b).keys()].sort((a,c)=>a-c),hits:hitList(b),known:obs.map(o=>[o.pos,o.v]).sort((a,c)=>a[0]-c[0]),noHit:noHit.sort((a,c)=>a-c),prior:{ca,cb},fixC:fixC==null?null:fixC,hist:h.n};
+  if(fpPrior)inp.fpPrior=fpPrior;
+  return inp;
 }
 function engWorker(){
   if(ENG.worker||ENG.failed)return ENG.worker;
   try{
-    const src=jhEngine.toString()+';onmessage=e=>{const r=jhEngine(e.data.inp);postMessage({key:e.data.key,r:{phit:r.phit,G:r.G,fpos:r.fpos,fval:r.fval,post:r.post}})}';
+    const src=jhEngine.toString()+';onmessage=e=>{const r=jhEngine(e.data.inp);postMessage({key:e.data.key,r:{phit:r.phit,G:r.G,VP:r.VP,M:r.M,fpos:r.fpos,fval:r.fval,post:r.post}})}';
     ENG.worker=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));
     ENG.worker.onmessage=e=>engDone(e.data.key,e.data.r);
     ENG.worker.onerror=()=>{ENG.failed=true;ENG.worker=null;const j=ENG.busy;ENG.busy=null;if(j)engRun(j)};
@@ -557,41 +613,67 @@ function getEngine(b,start=true){
   if(ENG.busy){if(ENG.busy.key!==key)ENG.queue=job}else engRun(job);
   return{pending:true};
 }
-/* รวมผลเครื่องคำนวณแบบเบย์เข้ากับโมเดลเดิม (linear opinion pool 70:30) */
+/* รวมผลเครื่องคำนวณแบบเบย์เข้ากับโมเดลเดิม (linear opinion pool)
+   น้ำหนักเริ่มที่ 70:30 แล้วปรับเองจากผลทายจริงของร้าน (โมเดลไหนทายฮิตแม่นกว่า ได้น้ำหนักมากกว่า) */
 const W_BAYES=0.7;
+const _bw={k:null,v:null};
+function blendW(b){
+  const recs=[];
+  S.boards.filter(x=>x.shop===b.shop).forEach(x=>[{opened:x.opened,pred:x.pred},...archOf(x)].forEach(r=>{
+    const P=r.pred||{};Object.keys(P).forEach(k=>{const q=P[k],o=(r.opened||{})[k];if(!o||q.pe==null||q.pH==null)return;recs.push([q.pe,q.pH,isHitV(x,val(o))?1:0])})}));
+  const key=b.shop+'|'+recs.length+'|'+recs.reduce((a,r)=>a+r[2],0);
+  if(_bw.k===key)return _bw.v;
+  let out={w:W_BAYES,n:recs.length,hits:recs.reduce((a,r)=>a+r[2],0),learned:false};
+  if(recs.length>=15&&out.hits>=3){
+    const Ws=[0.3,0.45,0.6,0.7,0.8,0.9,1];let best=null;
+    Ws.forEach(w=>{let ll=-Math.pow(w-W_BAYES,2)/(2*0.2*0.2);recs.forEach(([e,h,y])=>{const p=clamp(w*e+(1-w)*h,0.002,0.998);ll+=y?Math.log(p):Math.log(1-p)});if(!best||ll>best.ll)best={w,ll}});
+    out.w=best.w;out.learned=true;
+  }
+  _bw.k=key;_bw.v=out;return out;
+}
+/* โอกาสที่เลข u อยู่ในซอง x (ไม่มีเงื่อนไข: รวมโอกาสที่เลขนั้นไม่อยู่ในกล่องแล้วด้วย) */
+function pOfNum(R,x,u){
+  let hp=0;
+  if(R.dist&&R.idx.has(x)){const d=R.dist(u);hp=d.p[R.idx.get(x)]*Math.min(1,R.U/Math.max(1,R.nUnseen))}
+  if(!R.E)return hp;
+  return R.W*R.E.G[x*R.E.VP+u]+(1-R.W)*hp;
+}
+/* เลข u น่าอยู่ช่วงไหน: หาช่วงซองติดกันสั้นที่สุด (≤8 ซอง) ที่โอกาสเกินกว่าสุ่มมากที่สุด */
+function locOf(b,R,u){
+  const un=R.un||[];if(!un.length)return null;
+  const arr=un.map(x=>({x,p:pOfNum(R,x,u)}));
+  let tot=0;arr.forEach(o=>tot+=o.p);if(!(tot>0))return null;
+  arr.forEach(o=>o.p/=tot);
+  const byPos=arr.slice().sort((a,c)=>a.x-c.x);let best=null;
+  for(let w=1;w<=Math.min(8,byPos.length);w++){
+    let m=0;for(let i=0;i<w;i++)m+=byPos[i].p;let bm=m,bi=0;
+    for(let i=w;i<byPos.length;i++){m+=byPos[i].p-byPos[i-w].p;if(m>bm){bm=m;bi=i-w+1}}
+    const ex=bm-w/Math.max(1,R.U);
+    if(!best||ex>best.ex)best={w,bi,m:bm,ex};
+    if(bm>=0.5)break;
+  }
+  const lo=byPos[best.bi].x,hi=byPos[best.bi+best.w-1].x;
+  arr.sort((a,c)=>c.p-a.p);
+  const clues=obsOf(b).map(o=>({v:o.v,pos:o.pos,d:u-o.v})).sort((a,c)=>Math.abs(a.d)-Math.abs(c.d)||a.pos-c.pos).slice(0,2);
+  return{n:u,center:arr[0].x,lo,hi,conf:best.m,rangeN:best.w,rnd:best.w/Math.max(1,R.U),clues,peak:arr[0].p,inBox:Math.min(1,tot),top:arr.slice(0,5).map(o=>({x:o.x,p:o.p*Math.min(1,tot)}))};
+}
 function mergeEngine(b,R,start=true){
   const E=getEngine(b,start);
+  R.W=0;
   if(!E)return R;
   if(E.pending){R.pending=true;return R}
-  const N=b.total,NP=N+1,G=E.G;
-  const un=Object.keys(R.prob).map(Number);
-  R.E=E;let mx=0,mn=1;
-  un.forEach(x=>{R.prob[x]=R.H?W_BAYES*E.phit[x]+(1-W_BAYES)*R.prob[x]:0;mx=Math.max(mx,R.prob[x]);mn=Math.min(mn,R.prob[x])});
+  const G=E.G,VP=E.VP||(b.total+1);if(!E.VP)E.VP=VP;
+  const BW=blendW(b);R.W=BW.w;R.BW=BW;
+  const un=R.un;
+  R.E=E;R.probH={};let mx=0,mn=1;
+  un.forEach(x=>{R.probH[x]=R.prob[x];R.prob[x]=R.H?R.W*E.phit[x]+(1-R.W)*R.prob[x]:0;mx=Math.max(mx,R.prob[x]);mn=Math.min(mn,R.prob[x])});
   R.mx=mx;R.mn=mn;R.spread=mx>mn*1.08&&mx>0;
   R.top=R.spread?un.slice().sort((a,c)=>R.prob[c]-R.prob[a]).slice(0,6):[];
-  // ฮิตแต่ละใบน่าอยู่ตรงไหน
-  const used=usedNums(b),obs=obsOf(b);
-  R.perHit=hitList(b).filter(u=>!used.has(u)).map(u=>{
-    let tot=0;const arr=un.map(x=>{const p=G[x*NP+u];tot+=p;return{x,p}});
-    if(!(tot>0))return null;
-    arr.forEach(o=>o.p/=tot);
-    // หาช่วงซองติดกันที่สั้นที่สุด (ไม่เกิน 8 ซอง) ที่รวมโอกาสได้มากที่สุด
-    const byPos=arr.slice().sort((a,c)=>a.x-c.x);let best=null;
-    for(let w=1;w<=Math.min(8,byPos.length);w++){
-      let m=0;for(let i=0;i<w;i++)m+=byPos[i].p;let bm=m,bi=0;
-      for(let i=w;i<byPos.length;i++){m+=byPos[i].p-byPos[i-w].p;if(m>bm){bm=m;bi=i-w+1}}
-      const ex=bm-w/Math.max(1,R.U);   // โอกาสส่วนที่เกินกว่าสุ่ม
-      if(!best||ex>best.ex){best={w,bi,m:bm,ex}}
-      if(bm>=0.5)break;
-    }
-    const lo=byPos[best.bi].x,hi=byPos[best.bi+best.w-1].x,conf=best.m,rangeN=best.w;
-    arr.sort((a,c)=>c.p-a.p);
-    const clues=obs.map(o=>({v:o.v,pos:o.pos,d:u-o.v})).sort((a,c)=>Math.abs(a.d)-Math.abs(c.d)||a.pos-c.pos).slice(0,2);
-    return{n:u,center:arr[0].x,lo,hi,conf,rangeN,rnd:rangeN/Math.max(1,R.U),clues,peak:arr[0].p};
-  }).filter(p=>p&&p.conf>=0.15&&p.conf/Math.max(1e-9,p.rnd)>=1.6);
+  const used=usedNums(b);
+  R.perHit=hitList(b).filter(u=>!used.has(u)).map(u=>locOf(b,R,u)).filter(p=>p&&p.conf>=0.15&&p.conf/Math.max(1e-9,p.rnd)>=1.6);
   R.diffuse=hitList(b).filter(u=>!used.has(u)&&!R.perHit.some(p=>p.n===u));
   R.guessP=x=>{
-    const row=E.fval.map(u=>({u,p:G[x*NP+u]})).sort((a,c)=>c.p-a.p).slice(0,3);
+    const row=E.fval.map(u=>({u,p:G[x*VP+u]})).sort((a,c)=>c.p-a.p).slice(0,3);
     return row[0]&&row[0].p>1.5/Math.max(1,E.fval.length)?row:null;
   };
   return R;
@@ -622,8 +704,8 @@ function whyPack(b,x,R){
   else lines.push('ยังไม่มีซองที่เปิดแล้วอยู่ใกล้ซองนี้ (ภายใน 12 ซอง) ผลนี้มาจากภาพรวมทั้งกล่อง');
   if(D.k){
     const est=[];
-    if(L&&x-L.pos<=12){const v=Math.round(L.v+D.k*(x-L.pos)/st);if(v>=1&&v<=b.total)est.push(`นับต่อจากซองซ้าย → ราว ${pad(v)}`)}
-    if(Rr&&Rr.pos-x<=12){const v=Math.round(Rr.v-D.k*(Rr.pos-x)/st);if(v>=1&&v<=b.total)est.push(`นับย้อนจากซองขวา → ราว ${pad(v)}`)}
+    if(L&&x-L.pos<=12){const v=Math.round(L.v+D.k*(x-L.pos)/st);if(v>=1&&v<=NM(b))est.push(`นับต่อจากซองซ้าย → ราว ${pad(v)}`)}
+    if(Rr&&Rr.pos-x<=12){const v=Math.round(Rr.v-D.k*(Rr.pos-x)/st);if(v>=1&&v<=NM(b))est.push(`นับย้อนจากซองขวา → ราว ${pad(v)}`)}
     if(est.length)lines.push(`ร้านนี้${D.t.replace('เลขมัก','เลขมัก')} (มั่นใจ ${pctI(D.conf)})${st===2?' และเลขต่อกันมักเว้นทีละซอง':''}: ${est.join(' · ')}`);
   }
   const g=R.guessP&&R.guessP(x);
@@ -650,14 +732,183 @@ function whyHitE(b,p,R){
   if(lim.length)lines.push(`ที่ยังไม่สูงกว่านี้เพราะ: ${lim.join(' · ')}`);
   return `<details class="why"><summary>ทำไมมั่นใจ ${pct(p.conf)}?</summary><ul>${lines.map(l=>`<li>${l}</li>`).join('')}</ul></details>`;
 }
-function pickCard(b,x,R,i){
-  const p=lr(b,x),g=R.guessP?R.guessP(x):null;
-  const ratio=R.prob[x]/Math.max(1e-9,R.base);
-  return `<div class="pick" role="button" tabindex="0" onclick="selPos(${x})">
-    <div class="pk-top"><span class="pk-rank">${i+1}</span><span class="pk-pos">${boxPrefix(b,p.bx)}ซ้าย <b>${p.L}</b> / ขวา <b>${p.R}</b> <span class="muted small">· ซองเดิม #${x}</span></span><span class="pk-p">${pct(R.prob[x])}</span></div>
-    <div class="pk-sub">${g?`น่าจะเป็นเลข ${g.map(o=>`<span class="pk-n${isHitV(b,o.u)?' hit':''}">${isHitV(b,o.u)?'★':''}${pad(o.u)} <small>${pct(o.p)}</small></span>`).join('')}`:'<span class="muted small">ยังเดาเลขไม่ได้</span>'}<span class="muted small" style="margin-left:auto">สูงกว่าสุ่ม ${ratio.toFixed(1)} เท่า</span></div>
-    ${R.E?whyPack(b,x,R):''}
+function pickCard(b,x,R,i,mode,T,EV){
+  const p=lr(b,x),gp=R.guessP?R.guessP(x):null,gh=gp?null:(R.guess&&R.guess(x));
+  const g=gp||(gh?gh.ranked.map(([u,q])=>({u,p:q})):null);
+  let main,ratio=null,cls='';
+  if(mode==='target'&&T){main=pct(T.pt[x]);ratio=T.pt[x]/Math.max(1e-9,T.base);cls=' tgt'}
+  else if(mode==='ev'&&EV){main=`<span class="${EV.ev[x]>=0?'ev-pos':'ev-neg'}">${money(EV.ev[x])}</span>`}
+  else{main=pct(R.prob[x]);ratio=R.prob[x]/Math.max(1e-9,R.base)}
+  const extra=[];
+  if(mode!=='hit'&&R.H)extra.push(`โอกาสฮิต ${pct(R.prob[x])}`);
+  if(T&&mode!=='target')extra.push(`เป็นเลขที่ตามล่า ${pct(T.pt[x])}`);
+  if(EV&&mode!=='ev')extra.push(`คุ้ม ${money(EV.ev[x])}`);
+  if(mode==='target'&&T){const bk=T.out.map(o=>({u:o.u,p:pOfNum(R,x,o.u)})).filter(o=>o.p>0.005).sort((a,c)=>c.p-a.p).slice(0,3);if(bk.length)extra.push('ตามล่า: '+bk.map(o=>`${pad(o.u)} ${pct(o.p)}`).join(' · '))}
+  return `<div class="pick${cls}" role="button" tabindex="0" onclick="selPos(${x})">
+    <div class="pk-top"><span class="pk-rank">${i+1}</span><span class="pk-pos">${boxPrefix(b,p.bx)}ซ้าย <b>${p.L}</b> / ขวา <b>${p.R}</b> <span class="muted small">· ซองเดิม #${x}</span></span><span class="pk-p">${main}</span></div>
+    <div class="pk-sub">${g?`น่าจะเป็นเลข ${g.map(o=>`<span class="pk-n${isHitV(b,o.u)?' hit':''}">${isHitV(b,o.u)?'★':''}${pad(o.u)} <small>${pct(o.p)}</small></span>`).join('')}`:'<span class="muted small">ยังเดาเลขไม่ได้</span>'}${ratio!=null?`<span class="muted small" style="margin-left:auto">สูงกว่าสุ่ม ${ratio.toFixed(1)} เท่า</span>`:''}</div>
+    ${extra.length?`<div class="small muted" style="margin-top:4px">${extra.join(' · ')}</div>`:''}
+    ${R.E&&mode!=='target'?whyPack(b,x,R):''}
   </div>`;
+}
+
+/* ===== คำทายที่บันทึกไว้ก่อนเปิดซอง (ใช้ให้คะแนน + สีเขียว) ===== */
+function rankIn(R,map,x){if(!R.un)return null;const v=map[x];let k=0;R.un.forEach(y=>{if(map[y]>v+1e-12)k++});return k}
+function snapPred(b,x){
+  const R=mergeEngine(b,model(b),false);
+  if(!R.U||!R.idx||!R.idx.has(x))return null;
+  const p=lr(b,x),r4=v=>Math.round(v*1e4)/1e4;
+  const s={t:Date.now(),U:R.U,H:R.H,base:r4(R.base),L:p.L,R:p.R,bx:p.bx.i};
+  if(UI.pick&&UI.pick.x===x)s.side=UI.pick.s;
+  if(R.H){s.ph=r4(R.prob[x]);if(R.spread)s.rk=rankIn(R,R.prob,x);if(R.E){s.pe=r4(R.E.phit[x]);s.pH=r4(R.probH[x])}}
+  const gp=R.guessP?R.guessP(x):null;
+  if(gp){s.g=gp.map(o=>[o.u,Math.round(o.p*1000)/1000]);s.Ug=R.E.fval.length}
+  else{const g=R.guess&&R.guess(x);if(g){s.g=g.ranked.map(([u,q])=>[u,Math.round(q*1000)/1000]);s.Ug=R.nUnseen}}
+  const T=targetInfo(b,R);
+  if(T&&T.out.length){s.tg={n:T.out.map(o=>o.u),p:r4(T.pt[x]),rk:T.spread?rankIn(R,T.pt,x):null}}
+  return s;
+}
+function gradeOf(b,opened,pred,x){
+  const o=opened&&opened[x],P=pred&&pred[x];if(!o||!P)return null;
+  const v=val(o),hit=isHitV(b,v),g=P.g||[],top=g.length?g[0][0]:null;
+  const exact=v!=null&&top===v;
+  const near=v!=null&&!exact&&top!=null&&(g.some(t=>t[0]===v)||Math.abs(top-v)<=2);
+  const caught=hit&&P.rk!=null&&P.rk<5;
+  const tgt=v!=null&&!!(P.tg&&P.tg.n&&P.tg.n.includes(v));
+  return{v,hit,exact,near,caught,tgt,P};
+}
+const gCls=G=>!G?'':(G.exact?' g-ex':G.near?' g-nr':'')+(G.caught?' g-ct':'');
+function gBadge(G){if(!G)return'';const a=[];
+  if(G.caught)a.push('<span class="gb ct">🎯 จับฮิต</span>');
+  if(G.exact)a.push('<span class="gb">✓ ตรง</span>');else if(G.near)a.push('<span class="gb nr">≈ ใกล้</span>');
+  if(G.tgt&&G.P.tg&&G.P.tg.rk!=null&&G.P.tg.rk<5)a.push('<span class="gb">🔎 เจอเลขที่ตามล่า</span>');
+  return a.join('')}
+function roundsOf(b){return [...archOf(b).map((r,i)=>({cfg:r,opened:r.opened||{},pred:r.pred||{},seq:r.seq||Object.keys(r.opened||{}).map(Number),round:i+1,arch:true})),{cfg:b,opened:b.opened,pred:b.pred||{},seq:seqOf(b),round:archOf(b).length+1,arch:false}]}
+function nearSize(g){const t=g[0][0],st=new Set();for(let d=-2;d<=2;d++)if(t+d>=1)st.add(t+d);g.forEach(o=>st.add(o[0]));return st.size}
+function scoreOf(bs){
+  const s={n:0,ex:0,nr:0,rEx:0,rNr:0,nh:0,ct:0,rCt:0,nt:0,tt:0,rT:0,recs:0};
+  bs.forEach(b=>roundsOf(b).forEach(r=>Object.keys(r.pred).forEach(k=>{
+    const G=gradeOf(b,r.opened,r.pred,+k);if(!G)return;const P=G.P;s.recs++;
+    if(G.v!=null&&P.g&&P.g.length){const Ug=Math.max(1,P.Ug||P.U);s.n++;if(G.exact)s.ex++;if(G.exact||G.near)s.nr++;s.rEx+=1/Ug;s.rNr+=Math.min(1,nearSize(P.g)/Ug)}
+    if(G.hit&&P.rk!=null){s.nh++;if(G.caught)s.ct++;s.rCt+=Math.min(1,5/Math.max(1,P.U))}
+    if(G.tgt){s.nt++;if(P.tg.rk!=null&&P.tg.rk<5)s.tt++;s.rT+=Math.min(1,5/Math.max(1,P.U))}
+  })));
+  return s;
+}
+const f1=v=>v<10?v.toFixed(1).replace(/\.0$/,''):Math.round(v)+'';
+function scoreHTML(sc,title){
+  if(!sc.recs)return '';
+  const cell=(a,n,r,lab)=>`<div class="sc"><b>${n?`${a}/${n}`:'–'}</b><span>${lab}</span>${n?`<i>สุ่มได้ราว ${f1(r)}${r>0&&a>r?` · ดีกว่า ×${f1(a/r)}`:''}</i>`:''}</div>`;
+  return `<div class="score"><div class="sc-h"><span>✅ ผลทายจริง${title?` · ${title}`:''}</span><span class="small muted">ให้คะแนนจากคำทายก่อนเปิดซอง ${sc.recs} ซอง</span></div>
+    <div class="sc-row">${cell(sc.ex,sc.n,sc.rEx,'ทายเลขตรง')}${cell(sc.nr,sc.n,sc.rNr,'ทายใกล้ (±2 / ท็อป 3)')}${cell(sc.ct,sc.nh,sc.rCt,'ฮิตออกจากซองท็อป 5')}</div>
+    ${sc.nt?`<div class="small" style="margin-top:6px;color:var(--ok2)">🔎 เลขที่ตามล่าออกมา ${sc.nt} ครั้ง · อยู่ในท็อป 5 ที่แอปชี้ ${sc.tt} ครั้ง (สุ่มได้ราว ${f1(sc.rT)})</div>`:''}</div>`;
+}
+
+/* ===== ป้ายประวัติ: “ซ้าย 7 (#8)” — # คือตำแหน่งเดิมของซอง ส่วนซ้าย/ขวาคือที่นับตอนหยิบ ===== */
+const _rp=new Map();
+function replayLR(cfg,seq){
+  const key=[cfg.total,cfg.boxN||0,cfg.boxPer||0,cfg.refill?1:0,cfg.sec||0,cfg.refillAt||'gap',seq.join(',')].join('|');
+  if(_rp.has(key))return _rp.get(key);
+  const BX=boxes(cfg),arr=BX.map(bx=>{const a=[];for(let x=bx.from;x<=bx.to;x++)a.push(x);return a}),out={};
+  seq.forEach(x=>{const bi=BX.findIndex(bx=>x>=bx.from&&x<=bx.to);if(bi<0)return;const a=arr[bi],i=a.indexOf(x);if(i<0)return;
+    out[x]={L:i+1,R:a.length-i,bx:bi};a.splice(i,1);
+    if(cfg.refill&&cfg.sec>0&&a.length){const sec=cfg.sec,si=Math.floor(i/sec),sl=Math.floor((a.length-1)/sec);
+      if(si<sl){const m=a.pop();a.splice(cfg.refillAt==='end'?Math.min(a.length,(si+1)*sec-1):i,0,m)}}});
+  if(_rp.size>20)_rp.clear();_rp.set(key,out);return out;
+}
+function lblOf(cfg,x,P,rp){
+  const q=P&&P.L?P:rp[x];if(!q)return '';
+  const pre=boxes(cfg).length>1?`ก.${(q.bx||0)+1} `:'';
+  if(P&&P.side)return pre+(P.side==='R'?`ขวา ${P.R}`:`ซ้าย ${P.L}`);
+  return pre+`ซ้าย ${q.L}/ขวา ${q.R}`;
+}
+function histHTML(b){
+  const rs=roundsOf(b).reverse();let h='';
+  rs.forEach(r=>{
+    const rp=replayLR(r.cfg,r.seq);
+    if(rs.length>1)h+=`<li class="rnd" style="background:none;cursor:default;padding:0">${r.arch?`รอบ ${r.round} · ก่อนร้านสับใหม่ (${r.cfg.total} ซอง)`:`รอบ ${r.round} · ตอนนี้`}</li>`;
+    h+=r.seq.map((x,i)=>{const o=r.opened[x];if(!o)return'';const v=val(o),G=gradeOf(b,r.opened,r.pred,x),P=r.pred[x];
+      return `<li class="${isHitV(b,v)?'hit':''}${gCls(G)}${r.arch?' arch':''}" ${r.arch?'':`onclick="selPos(${x})"`}><i>${i+1}.</i><span class="lb">${lblOf(r.cfg,x,P,rp)}</span><i>#${x}</i>→ ${v==null?'เกลือ':isHitV(b,v)?'★'+pad(v):pad(v)}${gBadge(G)}</li>`}).reverse().join('');
+  });
+  return h;
+}
+
+/* ===== ตามล่าเลข: เลขที่อยากได้ น่าอยู่ซองไหน ===== */
+function targetInfo(b,R){
+  const nums=(b.target||[]).filter(u=>u>=1&&u<=NM(b));if(!nums.length||!R.un)return null;
+  const used=usedNums(b),out=[],gone=[];
+  nums.forEach(u=>{if(used.has(u)){const at=used.get(u);gone.push({u,at,round:at===0?archNums(b).get(u).round:null});return}out.push({u,L:locOf(b,R,u)})});
+  const pt={};let mx=0,mn=1,base=0;
+  R.un.forEach(x=>{let q=1;out.forEach(o=>q*=1-pOfNum(R,x,o.u));pt[x]=1-q;mx=Math.max(mx,pt[x]);mn=Math.min(mn,pt[x])});
+  out.forEach(o=>base+=(o.L?o.L.inBox:Math.min(1,R.U/Math.max(1,R.nUnseen)))/Math.max(1,R.U));
+  const spread=out.length>0&&mx>mn*1.08&&mx>0;
+  const top=spread?R.un.slice().sort((a,c)=>pt[c]-pt[a]).slice(0,6):[];
+  return{nums,out,gone,pt,mx,mn,base:Math.min(1,base),spread,top};
+}
+function huntHTML(b,R,T){
+  const val0=(b.target||[]).map(pad).join(' ');
+  let body='';
+  if(T){
+    body=T.gone.map(g=>`<div class="tg"><b>★${pad(g.u)}</b> <span class="muted">ออกไปแล้ว — ${g.at===0?`ในรอบ ${g.round} ก่อนร้านสับใหม่`:`ซองเดิม #${g.at}`}</span></div>`).join('')+
+    T.out.map(({u,L})=>{
+      if(!L)return `<div class="tg"><b>★${pad(u)}</b> <span class="muted">ยังคำนวณไม่ได้</span></div>`;
+      const ok=L.conf>=0.15&&L.conf/Math.max(1e-9,L.rnd)>=1.6,ratio=L.conf/Math.max(1e-9,L.rnd);
+      const pk=`<div class="tgpk">${L.top.map(o=>{const q=lr(b,o.x);return `<button onclick="selPos(${o.x})">${boxPrefix(b,q.bx)}ซ้าย ${q.L}/ขวา ${q.R} · ${pct(o.p)}</button>`}).join('')}</div>`;
+      const nb=L.inBox<0.95?`<div class="small muted">มีโอกาส ${pct(1-L.inBox)} ที่เลขนี้อยู่ในซองเกลือที่จดไว้แบบไม่รู้เลขแล้ว</div>`:'';
+      return `<div class="tg"><b style="color:var(--ok2)">${isHitV(b,u)?'★':''}${pad(u)}</b> → ${ok?`น่าอยู่${rangeText(b,L)} · <span class="tp">โอกาส ${pct(L.conf*L.inBox)}</span> <span class="small muted">(สุ่ม ${pct(L.rnd*L.inBox)} · สูงกว่า ×${ratio.toFixed(1)})</span>${R.E?whyHitE(b,L,R):whyHTML(b,L,R.P)}`:`<span class="muted">ยังไม่มีเบาะแสพอ โอกาสกระจายทั่วกล่อง — จดเลขที่ใกล้ ${pad(u)} เพิ่มจะช่วยได้</span>`}
+        <div class="small muted" style="margin-top:4px">5 ซองที่น่าเป็นเลขนี้ที่สุด (แตะเพื่อเลือก):</div>${pk}${nb}</div>`;
+    }).join('');
+    if(T.out.length>1&&T.spread)body+=`<div class="small muted" style="margin-top:6px">โอกาสเจอเลขใดเลขหนึ่งในซองที่ดีที่สุด ${pct(T.mx)} (สุ่ม ${pct(T.base)}) · เลือก “เรียงตาม: เลขที่ตามล่า” ด้านล่างเพื่อดูอันดับ</div>`;
+  }
+  return `<div class="hunt"><div class="small" style="color:var(--ok2);font-weight:600">🔎 ตามล่าเลข — ใส่เลขที่อยากได้ (หลายเลขได้) แอปจะหาว่าน่าอยู่ซองไหน</div>
+    <div class="row" style="margin-top:8px"><input id="tgIn" inputmode="numeric" enterkeyhint="search" placeholder="เช่น 065 101" value="${esc(val0)}"><button class="btn gold sm" onclick="setTarget()">ค้นหา</button>${T?'<button class="btn sm" onclick="clearTarget()">ล้าง</button>':''}</div>${body}</div>`;
+}
+function setTarget(){const b=getB(S.cur),n=parseNums($('#tgIn').value,NM(b)).slice(0,10);
+  if(!n.length){toast(`ใส่เลข 1–${NM(b)}`);return}b.target=n;b.rankBy='target';save();$('#tgIn').value='';$('#tgIn').blur();renderBoard()}
+function clearTarget(){const b=getB(S.cur);b.target=[];if(b.rankBy==='target')b.rankBy='hit';save();renderBoard()}
+function setRank(v){const b=getB(S.cur);b.rankBy=v;save();renderBoard()}
+
+/* ===== ความคุ้ม (Expected Value) ===== */
+const money=v=>(v<0?'−':v>0?'+':'')+'฿'+Math.abs(Math.round(v)).toLocaleString('en-US');
+const moneyAbs=v=>'฿'+Math.round(v).toLocaleString('en-US');
+const hv=(b,u)=>{const m=b.hitVals||{};return m[u]!=null?+m[u]:(+b.hitValDef||0)};
+const evOn=b=>(+b.hitValDef>0)||Object.keys(b.hitVals||{}).length>0;
+function evInfo(b,R){
+  if(!evOn(b)||!R.U||!R.un)return null;
+  const used=usedNums(b),hs=hitList(b).filter(u=>!used.has(u));
+  const price=+b.price||0,salt=+b.saltVal||0;
+  const sumHV=hs.reduce((a,u)=>a+hv(b,u),0),avgHV=hs.length?sumHV/hs.length:0;
+  const board=(sumHV+Math.max(0,R.U-hs.length)*salt)/R.U-price;
+  const ev={};let mx=-1e18,mn=1e18;
+  R.un.forEach(x=>{
+    const ph=R.H?R.prob[x]:0;let sw=0,sv=0;
+    hs.forEach(u=>{const q=pOfNum(R,x,u);sw+=q;sv+=q*hv(b,u)});
+    const cond=sw>1e-9?sv/sw:avgHV;
+    ev[x]=ph*cond+(1-ph)*salt-price;mx=Math.max(mx,ev[x]);mn=Math.min(mn,ev[x]);
+  });
+  const spread=mx-mn>Math.max(1,Math.abs(board)*0.02);
+  const top=R.un.slice().sort((a,c)=>ev[c]-ev[a]).slice(0,6);
+  return{ev,board,price,salt,mx,mn,spread,top,best:top[0],sumHV,nh:hs.length};
+}
+function evBar(b,R,EV){
+  if(!EV)return '';
+  const q=lr(b,EV.best),good=EV.mx>0;
+  return `<div class="evbar">💰 ${EV.price?`ราคา ${moneyAbs(EV.price)}/ซอง · `:''}จุ่มแบบสุ่ม เฉลี่ย <b class="${EV.board>=0?'ev-pos':'ev-neg'}">${money(EV.board)}</b> ต่อซอง · ซองคุ้มสุด ${boxPrefix(b,q.bx)}ซ้าย ${q.L}/ขวา ${q.R} <b class="${EV.mx>=0?'ev-pos':'ev-neg'}">${money(EV.mx)}</b>
+    <div class="small" style="margin-top:4px">${!EV.price?'ยังไม่ได้ใส่ราคาต่อซอง ตัวเลขนี้คือมูลค่าที่คาดว่าจะได้':good?(EV.board>=0?'✅ กระดานนี้คุ้มแม้จุ่มสุ่ม และซองที่แนะนำคุ้มยิ่งกว่า':'✅ จุ่มสุ่มไม่คุ้ม แต่ซองที่แนะนำคุ้มกว่าราคา'):'❌ ตอนนี้ยังไม่มีซองไหนคุ้มราคา ถ้าจะเล่นให้เลือกซองที่ขาดทุนน้อยสุด'} <span class="muted">· มูลค่าฮิตที่เหลือรวม ${moneyAbs(EV.sumHV)} (${EV.nh} ใบ)</span></div></div>`;
+}
+
+/* ===== ร้านสับใหม่: เก็บรอบนี้ไว้ แล้วเริ่มกล่องใหม่ 1..ซองที่เหลือ ===== */
+function reshuffle(){
+  const b=getB(S.cur),o=Object.keys(b.opened).length,left=b.total-o;
+  if(!o){toast('รอบนี้ยังไม่มีซองที่เปิด');return}
+  if(left<2){toast('ซองเหลือน้อยเกินไป');return}
+  ask(`ร้านเอาซองที่เหลือ <b>${left} ซอง</b> ไปสับใหม่?<br><span class="small muted">ข้อมูลรอบนี้จะเก็บไว้ (ใช้เรียนรู้นิสัยการสับของร้านต่อ) · กล่องใหม่นับซอง 1–${left} ใหม่ · เลขที่ออกไปแล้วจะไม่ถูกนับอีก · กด “ย้อนกลับ” ได้ถ้ากดผิด</span>`,'ร้านสับใหม่',()=>{
+    const snap=JSON.parse(JSON.stringify({total:b.total,opened:b.opened,seq:seqOf(b),pred:b.pred||{},boxN:b.boxN||0,boxPer:b.boxPer||0,archive:archOf(b),numMax:b.numMax||0}));
+    const r={total:b.total,opened:b.opened,seq:seqOf(b).slice(),pred:b.pred||{},boxN:b.boxN||0,boxPer:b.boxPer||0,sec:b.sec||0,refill:!!b.refill,refillAt:b.refillAt||'gap',at:Date.now()};
+    b.numMax=NM(b);b.archive=archOf(b).concat([r]);b.total=left;b.opened={};b.seq=[];b.pred={};
+    b.boxPer=0;if(left<=PER)b.boxN=0;
+    b.log=[{rs:snap}];UI.sel=null;UI.box=0;save();toast(`เริ่มรอบ ${b.archive.length+1}: กล่องใหม่ ${left} ซอง`);renderBoard('pos');
+  });
 }
 
 /* ===== หน้าแรก: รายชื่อร้าน ===== */
@@ -715,13 +966,14 @@ function renderShop(){setTimeout(()=>window.paintSync&&paintSync(),0);
     <div class="row"><button class="btn sm" onclick='openShopSheet(${JSON.stringify(shop).replace(/'/g,"&#39;")})'>แก้ชื่อ</button><button class="btn sm red" onclick='delShop(${JSON.stringify(shop).replace(/'/g,"&#39;")})'>ลบร้าน</button></div></header>
   <div class="brand" style="font-size:28px;margin-bottom:4px">${esc(shop)}</div>
   <div class="small" style="margin-bottom:14px">${shuffleText(st)} <span class="muted">(รวมจากทุกกระดานของร้าน)</span></div>
+  ${scoreHTML(scoreOf(bs),'ทุกกระดานของร้านนี้')}
   <button class="btn gold block" onclick='openNew(${JSON.stringify(shop).replace(/'/g,"&#39;")})'>+ เพิ่มกระดาน</button>
   <h3>กำลังเล่น (${act.length}) <span class="muted small" style="font-family:var(--body);font-weight:400">· เรียงตามโอกาสสูงสุด</span></h3>
   ${rows.length?rows.map(({b,c})=>boardCard(b,c)).join(''):'<p class="muted small">ยังไม่มีกระดาน กด “เพิ่มกระดาน”</p>'}
   ${cl.length?`<h3>ปิดแล้ว (${cl.length})</h3>${cl.map(b=>boardCard(b,null)).join('')}`:''}`;
 }
 function boardCard(b,c){
-  const f=foundHits(b).length,o=Object.keys(b.opened).length,U=b.total-o,H=hitList(b).length-f;
+  const f=foundHitsAll(b).length,o=Object.keys(b.opened).length,U=b.total-o,H=hitList(b).length-f;
   let right='';
   if(!b.closed&&c&&c.R.U){
     const best=c.best;
@@ -731,7 +983,7 @@ function boardCard(b,c){
   }
   return `<div class="card click bcard" role="button" tabindex="0" onclick="openBoard('${b.id}')" onkeydown="if(event.key==='Enter')openBoard('${b.id}')">
     <div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="t">${esc(b.name)}${b.closed?'<span class="pill">ปิดแล้ว</span>':''}</div>
-    <div class="muted small num" style="margin-top:2px">${b.total} ซอง${boxes(b).length>1?` (${boxes(b).length} กล่อง)`:''} · ฮิต ${hitRangeText(b)}${b.refill?' · เติมซอง':''}</div></div>${right}</div>
+    <div class="muted small num" style="margin-top:2px">${archOf(b).length?`รอบ ${archOf(b).length+1} · `:''}${b.total} ซอง${boxes(b).length>1?` (${boxes(b).length} กล่อง)`:''} · ฮิต ${hitRangeText(b)}${b.refill?' · เติมซอง':''}</div></div>${right}</div>
     <div class="progress"><i style="width:${(o/b.total*100).toFixed(1)}%"></i></div>
     <div class="muted small num">เหลือ ${U}/${b.total} ซอง · ฮิตเหลือ ${H}/${hitList(b).length}${b.closed?'':` · จดแล้ว ${o} ซอง`}</div>
     <div class="row bc-acts">${b.closed?`<button class="btn sm" onclick="event.stopPropagation();reopenId('${b.id}')">เปิดกระดานอีกครั้ง</button>`:''}<button class="btn sm red" onclick="event.stopPropagation();delBoardId('${b.id}')">ลบกระดาน</button></div></div>`;
@@ -790,7 +1042,10 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
   const b=getB(S.cur);if(!b)return renderHome();
   const R=mergeEngine(b,model(b)),BX=boxes(b),st=R.P.st;
   if(UI.box>=BX.length)UI.box=0;
-  const heatOf=x=>R.spread?(R.prob[x]-R.mn)/(R.mx-R.mn):0;
+  const T=targetInfo(b,R),EV=evInfo(b,R);
+  const RB=b.rankBy==='target'&&T&&T.out.length?'target':b.rankBy==='ev'&&EV?'ev':'hit';
+  const heatOf=RB==='target'?(x=>T.spread?(T.pt[x]-T.mn)/(T.mx-T.mn):0):RB==='ev'?(x=>EV.spread?(EV.ev[x]-EV.mn)/(EV.mx-EV.mn):0):(x=>R.spread?(R.prob[x]-R.mn)/(R.mx-R.mn):0);
+  const ranked=RB==='target'?T.top:RB==='ev'?(EV.spread?EV.top:[]):R.top;
   const PO=physOrder(b),sec=b.sec||0,DIV='<div class="dv"></div>',HDV='<div class="hdv"></div>';
   const boxHTML=BX.map(bx=>{
     let heat='',sl='';
@@ -800,9 +1055,9 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
       if(sec&&j>0&&(b.refill?j%sec===0:(x-bx.from)%sec===0)){sl+=DIV;heat+=HDV}
       const o=b.opened[x],sel=UI.sel===x?' sel':'';
       if(o){
-        const v=val(o),h=isHitV(b,v);
+        const v=val(o),h=isHitV(b,v),G=gradeOf(b,b.opened,b.pred,x);
         heat+=h?`<div class="hb hit" title="★${pad(v)}"></div>`:'<div class="hb z"></div>';
-        sl+=`<div class="slg${h?' hit':''}${sel}" data-p="${x}" title="${v==null?'เกลือ':pad(v)}"></div>`;
+        sl+=`<div class="slg${h?' hit':''}${gCls(G)}${sel}" data-p="${x}" title="${v==null?'เกลือ':pad(v)}${G&&G.exact?' · ทายตรง':G&&G.near?' · ทายใกล้':''}${G&&G.caught?' · จับฮิต':''}"></div>`;
       }else{
         const h=heatOf(x);
         heat+=h>0.02?`<div class="hb" style="--v:${Math.round(h*100)}%;--v-n:${h.toFixed(2)}"></div>`:'<div class="hb z"></div>';
@@ -826,12 +1081,12 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
     else{
       const p=lr(b,x);where=`${boxPrefix(b,p.bx)}ซองที่ ${p.L} จากซ้าย · ${p.R} จากขวา`;
       const gp=R.guessP?R.guessP(x):null,g=gp?null:R.guess(x);
-      sub=`ตำแหน่งเดิม #${x}${moved(b,x)?' (ซองนี้ถูกย้ายมาเติมจากขวาสุด)':''} · โอกาสฮิต ${pct(R.spread?R.prob[x]:R.base)}${gp?` · น่าจะเป็นเลข ${gp.map(o=>`${isHitV(b,o.u)?'★':''}${pad(o.u)} (${pct(o.p)})`).join(' · ')}`:g?` · คาดว่าเป็นเลข ${g.nums.map(n=>isHitV(b,n)?'★'+pad(n):pad(n)).join(' / ')}`:''}`;
+      sub=`ตำแหน่งเดิม #${x}${moved(b,x)?' (ซองนี้ถูกย้ายมาเติมจากขวาสุด)':''} · โอกาสฮิต ${pct(R.spread?R.prob[x]:R.base)}${T&&T.out.length?` · เป็นเลขที่ตามล่า ${pct(T.pt[x])}`:''}${EV?` · คุ้ม ${money(EV.ev[x])}`:''}${gp?` · น่าจะเป็นเลข ${gp.map(o=>`${isHitV(b,o.u)?'★':''}${pad(o.u)} (${pct(o.p)})`).join(' · ')}`:g?` · คาดว่าเป็นเลข ${g.nums.map(n=>isHitV(b,n)?'★'+pad(n):pad(n)).join(' / ')}`:''}`;
     }
     rec=`<div class="rec" id="rec"><div class="where">${where}</div>${sub?`<div class="orig">${sub}</div>`:''}
       <div class="row" style="margin-top:12px">
         <span class="small">ออกเลข</span>
-        <input type="number" id="numIn" inputmode="numeric" enterkeyhint="done" min="1" max="${b.total}" placeholder="เช่น 45" value="${o&&val(o)!=null?val(o):''}" style="width:110px;text-align:center;font-family:var(--num);font-weight:700;font-size:20px;background:var(--panel2);border:1px solid var(--gold);border-radius:10px;padding:6px 8px">
+        <input type="number" id="numIn" inputmode="numeric" enterkeyhint="done" min="1" max="${NM(b)}" placeholder="เช่น 45" value="${o&&val(o)!=null?val(o):''}" style="width:110px;text-align:center;font-family:var(--num);font-weight:700;font-size:20px;background:var(--panel2);border:1px solid var(--gold);border-radius:10px;padding:6px 8px">
         <button class="btn gold" onclick="saveNum(${x})">บันทึก</button>
         <span class="small muted">ฮิต = ${hitRangeText(b)}</span>
       </div>
@@ -844,28 +1099,31 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
   }
 
   const seq=seqOf(b);
-  const hist=seq.map((x,i)=>{const o=b.opened[x];if(!o)return'';const v=val(o);return `<li class="${isHitV(b,v)?'hit':''}" onclick="selPos(${x})"><i>${i+1}.</i>#${x} → ${v==null?'เกลือ':isHitV(b,v)?'★'+pad(v):pad(v)}</li>`}).reverse().join('');
+  const hist=histHTML(b),SC=scoreOf([b]),nArch=archOf(b).length;
   const modes=[['auto','อัตโนมัติ'],['low','ต่ำ'],['mid','กลาง'],['high','สูง'],['off','ปิด']];
   const chip=x=>{const p=lr(b,x);return `<button class="chip" onclick="selPos(${x})">${boxPrefix(b,p.bx)}ซ้าย ${p.L} / ขวา ${p.R} · ${pct(R.prob[x])}</button>`};
   const groups=groupHits(b,R.perHit);
 
   app.innerHTML=`
   <header class="top"><div class="row"><button class="btn sm" onclick="openShop(getB(S.cur).shop)">‹ ${esc(b.shop)}</button><button class="btn sm" onclick="openSettings()">⚙︎ ตั้งค่ากล่อง</button></div><div style="text-align:right"><div class="t" style="font-weight:600">${esc(b.name)}</div><div class="sub">${esc(b.shop)} · ฮิต ${hitRangeText(b)}${b.sec?` · กั้นทุก ${b.sec}${b.refill?' · เติมซองจากขวาสุด':''}`:''}${b.closed?' · ปิดแล้ว':''}</div></div></header>
-  <div class="stats">
-    <div class="stat"><b>${R.U}</b><span>ซองที่เหลือ</span></div>
+  <div class="stats${EV?' s5':''}">
+    <div class="stat"><b>${R.U}</b><span>ซองที่เหลือ${nArch?` · รอบ ${nArch+1}`:''}</span></div>
     <div class="stat"><b>${R.H}<small class="muted" style="font-size:13px">/${hitList(b).length}</small></b><span>ฮิตที่เหลือ</span></div>
     <div class="stat"><b>${R.U?pct(R.base):'–'}</b><span>ฮิตเรทตอนนี้</span></div>
     <div class="stat"><b>${R.spread?pct(R.mx):R.U?pct(R.base):'–'}</b><span>ซองที่ดีที่สุด</span></div>
+    ${EV?`<div class="stat"><b class="${EV.mx>=0?'ev-pos':'ev-neg'}" style="font-size:19px">${money(EV.mx)}</b><span>ซองคุ้มสุด (สุ่ม ${money(EV.board)})</span></div>`:''}
   </div>
+  ${SC.recs?scoreHTML(SC,nArch?'ทุกรอบของกระดานนี้':''):Object.keys(b.opened).length?'':'<p class="note" style="margin:-6px 0 12px">ทุกครั้งที่จด แอปจะเก็บคำทายของซองนั้นไว้ก่อน แล้วให้คะแนนว่าทายถูกไหม · <span style="color:var(--ok)">เขียว = ทายเลขตรง</span> · <span style="color:var(--ok2)">เขียวอ่อน = ทายใกล้</span> · ขอบเขียว = ฮิตออกจากซองท็อป 5 ที่แนะนำ</p>'}
   <div class="play"><div>
     <div class="boxes">${boxHTML}</div>
     <div class="refill-bar">
       <span class="small">เติมซองจากขวาสุด</span>
       <div class="seg"><button aria-pressed="${!b.refill}" onclick="setRefill(false)">ปิด</button><button aria-pressed="${!!b.refill}" onclick="setRefill(true)">เปิด</button></div>
+      <button class="btn sm" style="margin-left:auto" onclick="reshuffle()" title="ร้านเอาซองที่เหลือไปสับใหม่">🔀 ร้านสับใหม่</button>
       ${b.refill?`<span class="small muted">กั้นทุก</span><input type="number" id="secIn" inputmode="numeric" min="1" max="100" value="${b.sec}" onchange="setSec(this.value)">
       <div class="seg"><button aria-pressed="${b.refillAt!=='end'}" onclick="setRA('gap')">ตรงที่หยิบ</button><button aria-pressed="${b.refillAt==='end'}" onclick="setRA('end')">ท้ายช่อง</button></div>`:''}
     </div>
-    <div class="legend"><span><em style="background:linear-gradient(90deg,#4A0D16,#B02A40)"></em>ซองที่เหลือ</span><span><em style="background:rgba(255,255,255,.12)"></em>เปิดแล้ว (เกลือ)</span><span><em style="background:#E8CF8E"></em>ฮิตที่ออก</span><span><em style="background:rgb(255,138,61)"></em>แท่งส้ม = โอกาสฮิต</span></div>
+    <div class="legend"><span><em style="background:linear-gradient(90deg,#4A0D16,#B02A40)"></em>ซองที่เหลือ</span><span><em style="background:rgba(255,255,255,.12)"></em>เปิดแล้ว (เกลือ)</span><span><em style="background:#E8CF8E"></em>ฮิตที่ออก</span><span><em style="background:rgb(255,138,61)"></em>แท่งส้ม = ${RB==='target'?'โอกาสเป็นเลขที่ตามล่า':RB==='ev'?'ความคุ้ม':'โอกาสฮิต'}</span><span><em style="background:var(--ok)"></em>ทายตรง</span><span><em style="background:rgba(155,231,184,.55)"></em>ทายใกล้</span></div>
     ${R.U&&!b.closed?`<div class="pos-pick" style="margin-top:14px">
       ${BX.length>1?`<div class="seg">${BX.map(bx=>`<button aria-pressed="${UI.box===bx.i}" onclick="UI.box=${bx.i};renderBoard('pos')">กล่อง ${bx.i+1}</button>`).join('')}</div>`:''}
       <span class="small">ซองที่</span>
@@ -877,17 +1135,21 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
     ${rec}
     <div class="card" style="margin-top:14px">
       <div class="t">🎯 ซองที่น่าจุ่ม <span class="muted small" style="font-weight:400">(นับจากซองที่เหลือตอนนี้)</span></div>
-      ${R.H===0?'<div class="muted small">ฮิตออกครบแล้ว</div>':
+      ${R.U&&!b.closed?huntHTML(b,R,T):''}
+      ${(T&&T.out.length)||EV?`<div class="rankseg"><span class="small muted">เรียงตาม </span><div class="seg" style="flex-wrap:wrap"><button aria-pressed="${RB==='hit'}" onclick="setRank('hit')">โอกาสฮิต</button>${T&&T.out.length?`<button aria-pressed="${RB==='target'}" onclick="setRank('target')">เลขที่ตามล่า</button>`:''}${EV?`<button aria-pressed="${RB==='ev'}" onclick="setRank('ev')">ความคุ้ม</button>`:''}</div></div>`:''}
+      ${evBar(b,R,EV)}
+      ${RB!=='hit'?(ranked.length?`<div class="small muted" style="margin-top:8px">เรียงจาก${RB==='target'?'โอกาสเป็นเลขที่ตามล่า':'ความคุ้มต่อซอง (หักราคาแล้ว)'}สูงสุด · แตะการ์ดเพื่อเลือกซอง</div><div class="picks">${ranked.slice(0,5).map((x,i)=>pickCard(b,x,R,i,RB,T,EV)).join('')}</div>`:'<div class="muted small" style="margin-top:6px">ยังไม่มีเบาะแสพอจะเรียง — ทุกซองใกล้เคียงกัน</div>'):
+        R.H===0?'<div class="muted small">ฮิตออกครบแล้ว</div>':
         !R.obsN?'<div class="muted small" style="margin-top:4px">ยังไม่มีข้อมูล — จดเลขซองที่คนอื่นเปิด (ทั้งเกลือและฮิต) สัก 5–10 ซอง แอปจะเริ่มหาโซน</div>':
         !R.spread?'<div class="muted small" style="margin-top:4px">ยังไม่มีเลขที่ใกล้ฮิตพอจะชี้โซนได้ — ตอนนี้ทุกซองโอกาสใกล้เคียงกัน</div>':
-        R.E?`<div class="small muted" style="margin-top:4px">เรียงจากโอกาสติดฮิตสูงสุด · แตะการ์ดเพื่อเลือกซอง · กด “เหตุผล” เพื่อดูที่มา</div><div class="picks">${R.top.slice(0,5).map((x,i)=>pickCard(b,x,R,i)).join('')}</div>`:`<div class="sug">${R.top.map(chip).join('')}</div>`}
+        `<div class="small muted" style="margin-top:8px">เรียงจากโอกาสติดฮิตสูงสุด · แตะการ์ดเพื่อเลือกซอง${R.E?' · กด “เหตุผล” เพื่อดูที่มา':''}</div><div class="picks">${R.top.slice(0,5).map((x,i)=>pickCard(b,x,R,i,'hit',T,EV)).join('')}</div>`}
       ${R.pending?'<div class="calc">⏳ กำลังคำนวณแบบละเอียด (Bayesian)… ระหว่างนี้แสดงผลจากโมเดลเร็วไปก่อน</div>':''}
       ${groups.length?`<div class="small muted" style="margin-top:12px">“มั่นใจ %” = โอกาสที่ฮิตใบนั้นอยู่ในช่วงซองที่บอก · กด “ทำไม” เพื่อดูเหตุผล</div><div class="list" style="margin-top:4px">${groups.map(g=>`<div>ฮิต <b style="color:var(--gold2)">${g.names}</b> → น่าอยู่${g.txt} <span class="muted small">· มั่นใจ ${pct(g.conf)}</span>${R.E?whyHitE(b,g.p,R):whyHTML(b,g.p,R.P)}</div>`).join('')}</div>`:''}
       ${R.E&&R.diffuse&&R.diffuse.length?`<div class="small muted" style="margin-top:8px">ฮิตที่ยังไม่มีเบาะแสพอจะชี้ตำแหน่ง (โอกาสกระจายทั่วกล่อง): ${R.diffuse.length>8?R.diffuse.slice(0,6).map(pad).join(', ')+` … (${R.diffuse.length} ใบ)`:R.diffuse.map(pad).join(', ')} — จดเลขซองที่ใกล้เลขเหล่านี้เพิ่ม จะช่วยให้ชี้ได้</div>`:''}
       ${R.E?levelHTMLE(b,R.E):levelHTML(b,st)}
       <label class="f">ระดับที่ใช้คำนวณ <span class="muted">(ค่าเริ่มต้น “อัตโนมัติ” = ใช้ระดับที่แอปประเมิน)</span></label>
       <div class="seg" style="flex-wrap:wrap">${modes.map(([v,t])=>{const LV=R.E&&(b.mode||'auto')==='auto'?engLevel(R.E):levelOf(st);const rec=LV.key===v&&v!=='auto';return `<button aria-pressed="${(b.mode||'auto')===v}" onclick="setMode('${v}')">${t}${v==='auto'&&LV.key!=='none'?` <small style="opacity:.75">(${LV.name})</small>`:''}${rec?' <span class="recdot" title="แอปแนะนำ">★</span>':''}</button>`}).join('')}</div>
-      <div class="note">ใช้: ${R.E?`Bayesian HMM (ถ่วงทุกความเป็นไปได้ของนิสัยการสับ) ${Math.round(W_BAYES*100)}% + โมเดลเร็ว ${Math.round((1-W_BAYES)*100)}%${(b.mode||'auto')!=='auto'?' · ล็อกระดับการสับตามที่เลือก':''}`:R.P.src}</div>
+      <div class="note">ใช้: ${R.E?`Bayesian HMM (ถ่วงทุกความเป็นไปได้ของนิสัยการสับ) ${Math.round(R.W*100)}% + โมเดลเร็ว ${Math.round((1-R.W)*100)}%${R.BW&&R.BW.learned?` · น้ำหนักนี้ปรับเองจากผลทายจริงของร้าน ${R.BW.n} ซอง`:` · (จะปรับน้ำหนักเองเมื่อมีผลทายจริงของร้าน ≥15 ซองและฮิต ≥3 ใบ ตอนนี้ ${R.BW?R.BW.n:0} ซอง)`}${(b.mode||'auto')!=='auto'?' · ล็อกระดับการสับตามที่เลือก':''}`:R.P.src}${nArch?` · รวมข้อมูลรอบก่อนสับใหม่ ${nArch} รอบ`:''}</div>
     </div>
     <div class="row" style="margin-top:12px">
       <button class="btn" onclick="undo()" ${b.log.length?'':'disabled'}>↶ ย้อนกลับ</button>
@@ -896,28 +1158,30 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
     </div>
     <p class="note">วิธีจด: พิมพ์ “ซองที่ 11” เลือกซ้าย/ขวา กด Enter → พิมพ์เลขที่ออก เช่น 45 กด Enter → พร้อมจดซองถัดไป ซองที่เปิดแล้วจะออกจากการนับเหมือนในกล่องจริง</p>
   </div>
-  <aside class="side"><h4>ออกแล้ว ${seq.length}</h4>${hist?`<ol>${hist}</ol>`:'<div class="muted small">ยังไม่มี</div>'}</aside></div>`;
+  <aside class="side"><h4>ออกแล้ว ${seq.length}${nArch?` <span class="small muted">(รอบนี้)</span>`:''}</h4>${hist?`<ol>${hist}</ol>`:'<div class="muted small">ยังไม่มี</div>'}<div class="small muted" style="margin-top:8px">ป้าย “ซ้าย 7 #8” = นับซ้าย 7 ตอนหยิบ · #8 = ตำแหน่งเดิมของซองในกล่อง</div></aside></div>`;
 
   app.querySelectorAll('.slices').forEach(s=>s.onclick=e=>{const t=e.target.closest('[data-p]');if(t)selPos(+t.dataset.p)});
   const inp=$('#posN'),ni=$('#numIn');
   if(inp)inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();goPos()}};
   if(ni)ni.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();saveNum(UI.sel)}};
+  const ti=$('#tgIn');if(ti)ti.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();setTarget()}};
   if(UI.sel&&ni){ni.focus();ni.select();$('#rec').scrollIntoView({block:'nearest',behavior:'smooth'})}
   else if(focus==='pos'&&inp)inp.focus({preventScroll:true});
 }
 function setSide(s){UI.side=s;const v=$('#posN')?.value;renderBoard('pos');if(v&&$('#posN'))$('#posN').value=v}
-function selPos(x){const b=getB(S.cur);UI.sel=x;const bx=boxOf(b,x);if(bx)UI.box=bx.i;renderBoard()}
+function selPos(x){const b=getB(S.cur);UI.sel=x;UI.pick=null;const bx=boxOf(b,x);if(bx)UI.box=bx.i;renderBoard()}
 function goPos(){
   const b=getB(S.cur),n=parseInt($('#posN').value);
   const bx=boxes(b)[UI.box],r=remainIn(b,bx);
   if(!n||n<1||n>r.length){toast(`ใส่เลข 1–${r.length} (เหลือ ${r.length} ซองใน${boxes(b).length>1?'กล่องนี้':'กล่อง'})`);return}
-  UI.sel=UI.side==='R'?r[r.length-n]:r[n-1];renderBoard();
+  UI.sel=UI.side==='R'?r[r.length-n]:r[n-1];UI.pick={x:UI.sel,s:UI.side==='R'?'R':'L'};renderBoard();
 }
 function saveNum(x){
   const b=getB(S.cur),v=parseInt($('#numIn').value);
-  if(!v||v<1||v>b.total){toast(`ใส่เลข 1–${b.total}`);return}
+  if(!v||v<1||v>NM(b)){toast(`ใส่เลข 1–${NM(b)}`);return}
   const at=usedNums(b).get(v);
-  if(at&&at!==x){toast(`เลข ${pad(v)} บันทึกไว้แล้วที่ซองตำแหน่งเดิม #${at}\nถ้าจดผิด แตะรายการนั้นในช่อง “ออกแล้ว” เพื่อแก้`);return}
+  if(at===0){const a=archNums(b).get(v);toast(`เลข ${pad(v)} ออกไปแล้วในรอบก่อน (รอบ ${a.round}) ก่อนร้านสับใหม่`);return}
+  if(at!==undefined&&at!==x){toast(`เลข ${pad(v)} บันทึกไว้แล้วที่ซองตำแหน่งเดิม #${at}\nถ้าจดผิด แตะรายการนั้นในช่อง “ออกแล้ว” เพื่อแก้`);return}
   mark(x,v);
 }
 function openSettings(){
@@ -933,38 +1197,56 @@ function openSettings(){
   <label class="row small" style="margin-top:10px;gap:10px;cursor:pointer"><input type="checkbox" id="sRefill" ${b.refill?'checked':''} style="width:22px;height:22px;accent-color:#C9A45C"> หยิบแล้วร้านเอาซองขวาสุดมาเติมให้ช่องเต็ม</label>
   <div class="seg" style="margin-top:8px"><button type="button" aria-pressed="${b.refillAt!=='end'}" data-ra="gap" onclick="pickRA(this)">เติมตรงที่หยิบ</button><button type="button" aria-pressed="${b.refillAt==='end'}" data-ra="end" onclick="pickRA(this)">เติมท้ายช่องนั้น</button></div>
   <p class="note">เปลี่ยนแล้วแอปจะคำนวณลำดับซองใหม่จากที่จดไว้ทั้งหมดให้อัตโนมัติ</p>
+  <h3 style="margin-top:18px">💰 ความคุ้ม <span class="muted small" style="font-family:var(--body);font-weight:400">(ไม่บังคับ)</span></h3>
+  <div class="row" style="gap:10px">
+    <div style="flex:1;min-width:120px"><label class="f">ราคาจุ่ม / ซอง (฿)</label><input class="in" id="sPrice" type="number" inputmode="decimal" min="0" placeholder="เช่น 300" value="${b.price||''}"></div>
+    <div style="flex:1;min-width:120px"><label class="f">มูลค่าซองเกลือ (฿)</label><input class="in" id="sSalt" type="number" inputmode="decimal" min="0" placeholder="เช่น 80" value="${b.saltVal||''}"></div>
+  </div>
+  <label class="f">มูลค่าฮิตทั่วไป / ใบ (฿)</label><input class="in" id="sHitDef" type="number" inputmode="decimal" min="0" placeholder="ใช้กับฮิตที่ไม่ได้ใส่ราคาแยก" value="${b.hitValDef||''}">
+  <label class="f">ราคาฮิตรายใบ (บรรทัดละ 1 · เลข=ราคา)</label><textarea class="in" id="sHitVals" rows="4" style="font-family:var(--num)" placeholder="001=15000&#10;065=4000">${Object.entries(b.hitVals||{}).sort((a,c)=>a[0]-c[0]).map(([k,v])=>pad(+k)+'='+v).join('\n')}</textarea>
+  <p class="note">ใส่มูลค่าฮิตอย่างน้อย 1 ช่อง แอปจะคำนวณว่าแต่ละซองคุ้มราคาไหม และเรียงซองตามความคุ้มได้</p>
   <div class="row" style="margin-top:14px"><button class="btn" onclick="closeSheet()">ยกเลิก</button><button class="btn gold" style="flex:1" onclick="saveSettings()">บันทึก</button></div>`);
 }
 function saveSettings(){
   const b=getB(S.cur);b.sec=clamp(parseInt($('#sSec').value)||0,0,100);b.refill=$('#sRefill').checked&&b.sec>0;
   b.boxN=clamp(parseInt($('#sBoxN').value)||0,0,10);b.boxPer=clamp(parseInt($('#sBoxPer').value)||0,0,500);
-  const hn=parseNums($('#sHitNums').value,b.total);if(hn.length){b.hitNums=hn;b.hitCount=hn.length}else b.hitNums=null;
+  const hn=parseNums($('#sHitNums').value,NM(b));if(hn.length){b.hitNums=hn;b.hitCount=hn.length}else b.hitNums=null;
   b.refillAt=document.querySelector('#sheet [data-ra][aria-pressed="true"]')?.dataset.ra||'gap';
+  const num=id=>{const v=parseFloat(String($(id).value).replace(/,/g,''));return v>0?v:0};
+  b.price=num('#sPrice');b.saltVal=num('#sSalt');b.hitValDef=num('#sHitDef');
+  const hvm={};String($('#sHitVals').value||'').split('\n').forEach(l=>{const m=l.replace(/,/g,'').match(/(\d+)\s*[=:\s]\s*([\d.]+)/);if(m){const k=+m[1],v=+m[2];if(k>=1&&k<=NM(b)&&v>=0)hvm[k]=v}});
+  b.hitVals=hvm;if(b.rankBy==='ev'&&!evOn(b))b.rankBy='hit';
   UI.sel=null;save();closeSheet();renderBoard('pos');
 }
 function setRefill(on){const b=getB(S.cur);b.refill=on;if(on&&!(b.sec>0))b.sec=20;UI.sel=null;save();renderBoard('pos')}
 function setSec(v){const b=getB(S.cur);b.sec=clamp(parseInt(v)||20,1,100);UI.sel=null;save();renderBoard('pos')}
 function setRA(v){const b=getB(S.cur);b.refillAt=v;UI.sel=null;save();renderBoard('pos')}
 function setMode(v){const b=getB(S.cur);b.mode=v;save();renderBoard()}
-function pushLog(b,x){b.log.push({x,prev:b.opened[x]?{...b.opened[x]}:null,seq:seqOf(b).slice()});if(b.log.length>300)b.log.shift()}
+function pushLog(b,x){b.log.push({x,prev:b.opened[x]?{...b.opened[x]}:null,seq:seqOf(b).slice(),pred:b.pred&&b.pred[x]?b.pred[x]:null});if(b.log.length>300)b.log.shift()}
 function mark(x,v){
-  const b=getB(S.cur),seq=seqOf(b);pushLog(b,x);
+  const b=getB(S.cur),seq=seqOf(b);
+  let sp=null;if(!b.opened[x]&&!(b.pred&&b.pred[x])){try{sp=snapPred(b,x)}catch(e){sp=null}}
+  pushLog(b,x);
   b.opened[x]={v};if(!seq.includes(x))seq.push(x);
+  if(sp){if(!b.pred||typeof b.pred!=='object')b.pred={};b.pred[x]=sp}
+  UI.pick=null;
   UI.sel=null;save();renderBoard('pos');
 }
 function unmark(x){
   const b=getB(S.cur),seq=seqOf(b);pushLog(b,x);
-  delete b.opened[x];const i=seq.indexOf(x);if(i>=0)seq.splice(i,1);
+  delete b.opened[x];const i=seq.indexOf(x);if(i>=0)seq.splice(i,1);if(b.pred)delete b.pred[x];
   UI.sel=null;save();renderBoard('pos');
 }
 function undo(){
   const b=getB(S.cur),l=b.log.pop();if(!l)return;
+  if(l.rs){Object.assign(b,l.rs);if(!l.rs.numMax)delete b.numMax;if(!b.archive.length)delete b.archive;UI.sel=null;UI.box=0;save();toast('ย้อนการสับใหม่แล้ว');renderBoard('pos');return}
   if(l.prev)b.opened[l.x]=l.prev;else delete b.opened[l.x];
   if(l.seq)b.seq=l.seq;
+  if(!b.pred||typeof b.pred!=='object')b.pred={};if(l.pred)b.pred[l.x]=l.pred;else delete b.pred[l.x];
   UI.sel=null;save();renderBoard('pos');
 }
 function closeBoard(){
-  const b=getB(S.cur),f=foundHits(b).length;
+  const b=getB(S.cur),f=foundHitsAll(b).length;
   const msg=f<hitList(b).length?`ยังจดฮิตไม่ครบ (${f}/${hitList(b).length})\nข้อมูลที่จดไว้ยังใช้วิเคราะห์ร้านได้\n\nปิดกระดานเลยไหม?`:'ปิดกระดานและบันทึกเป็นข้อมูลร้าน?';
   ask(msg.replace(/\n/g,'<br>'),'ปิดกระดาน',()=>{b.closed=true;UI.sel=null;save();renderBoard()});
 }
