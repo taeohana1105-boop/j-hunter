@@ -213,6 +213,10 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
 .stb.on{color:var(--ink)}.stb.on i{background:var(--gold)}
 .stb b{font-family:var(--num);text-align:right;font-weight:600}
 @media(max-width:520px){.stb{grid-template-columns:120px 1fr 36px}}
+.legend2{margin:8px auto 0;max-width:780px;display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted)}
+.legend2 div{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center}
+.legend2 b{color:var(--gold2);font-weight:600;min-width:120px}
+.legend2 em{display:inline-block;width:9px;height:14px;border-radius:2px;vertical-align:-2px;margin-right:5px}
 </style>
 </head>
 <body>
@@ -1241,7 +1245,11 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
       ${b.refill?`<span class="small muted">กั้นทุก</span><input type="number" id="secIn" inputmode="numeric" min="1" max="100" value="${b.sec}" onchange="setSec(this.value)">
       <div class="seg"><button aria-pressed="${b.refillAt!=='end'}" onclick="setRA('gap')">ตรงที่หยิบ</button><button aria-pressed="${b.refillAt==='end'}" onclick="setRA('end')">ท้ายช่อง</button></div>`:''}
     </div>
-    <div class="legend"><span><em style="background:linear-gradient(90deg,#4A0D16,#B02A40)"></em>ซองที่เหลือ</span><span><em style="background:rgba(255,255,255,.12)"></em>เปิดแล้ว (เกลือ)</span><span><em style="background:#E8CF8E"></em>ฮิตที่ออก</span><span><em style="background:rgb(255,138,61)"></em>แท่งส้ม = ${RB==='target'?'โอกาสเป็นเลขที่ตามล่า':RB==='ev'?'ความคุ้ม':'โอกาสฮิต'}</span><span><em style="background:var(--ok)"></em>ทายตรง</span><span><em style="background:rgba(155,231,184,.55)"></em>ทายใกล้</span></div>
+    <div class="legend2">
+      <div><b>สีในกล่อง</b><span><em style="background:linear-gradient(#B02A40,#4A0D16)"></em>แดง = ซองที่ยังไม่เปิด</span><span><em style="background:rgba(255,255,255,.2)"></em>เทาเตี้ย = เปิดแล้ว ได้เกลือ</span><span><em style="background:#E8CF8E"></em>ทอง = ฮิตที่ออกแล้ว</span></div>
+      <div><b>แท่งส้มเหนือกล่อง</b><span>ยิ่งสูง = ซองนั้น${RB==='target'?'ยิ่งน่าจะเป็นเลขที่ตามล่า':RB==='ev'?'ยิ่งคุ้ม':'ยิ่งน่าจะมีฮิต'}</span></div>
+      <div><b>สีเขียว = แอปทายถูก</b><span class="muted">(แอปทายไว้ก่อนเปิดซอง แล้วมาตรวจหลังเปิด)</span><span><em style="background:var(--ok)"></em>เขียวเข้ม = ทายเลขตรงเป๊ะ</span><span><em style="background:rgba(155,231,184,.55)"></em>เขียวอ่อน = ทายเลขใกล้เคียง</span><span><em style="background:#E8CF8E;box-shadow:inset 0 0 0 2px var(--ok)"></em>ทองขอบเขียว = ซองที่แอปแนะนำ แล้วฮิตออกจริง</span></div>
+    </div>
     ${R.U&&!b.closed?`<div class="pos-pick" style="margin-top:14px">
       ${BX.length>1?`<div class="seg">${BX.map(bx=>`<button aria-pressed="${UI.box===bx.i}" onclick="UI.box=${bx.i};renderBoard('pos')">กล่อง ${bx.i+1}</button>`).join('')}</div>`:''}
       <span class="small">ซองที่</span>
