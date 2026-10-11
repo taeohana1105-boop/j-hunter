@@ -228,6 +228,11 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
 .bchip small{color:var(--muted)}
 .bchip button{border:0;background:rgba(255,255,255,.08);color:var(--ink);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:11px}
 #posN{width:110px}
+.qrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+.qrow .qpos{flex:1 1 220px;min-width:0;font-family:var(--display);color:var(--gold2);font-size:16px}
+.qrow .qpos small{font-family:var(--body);color:var(--muted);font-size:12px}
+.qrow .qin{width:92px;text-align:center;font-family:var(--num);font-weight:700;font-size:18px;background:var(--panel2);border:1px solid var(--gold);color:var(--ink);border-radius:10px;padding:5px 6px}
+.qrow.done{opacity:.75}.qrow .qval{font-family:var(--num);font-weight:700;font-size:18px}.qrow .qval.hit{color:var(--gold2)}
 </style>
 </head>
 <body>
@@ -236,7 +241,7 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
 <script>
 const KEY='jhunter.v1', PER=100;
 let S=load();
-const UI={sel:null,side:'L',box:0,multi:false,batch:[],queue:[],qsnap:{},qn:0};
+const UI={sel:null,side:'L',box:0,multi:false,batch:[],queue:[],qall:[],qsnap:{},qn:0};
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.boards))return s}catch(e){}return{boards:[],cur:null}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}if(typeof scheduleSync==='function')scheduleSync()}
 const app=document.getElementById('app');
@@ -1173,8 +1178,9 @@ function createBoard(){
 }
 
 /* ===== หน้ากระดาน ===== */
-function openBoard(id){S.cur=id;UI.sel=null;UI.box=0;UI.batch=[];UI.queue=[];UI.qsnap={};UI.qn=0;save();renderBoard('pos')}
+function openBoard(id){S.cur=id;UI.sel=null;UI.box=0;UI.batch=[];UI.queue=[];UI.qall=[];UI.qsnap={};UI.qn=0;save();renderBoard('pos')}
 function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
+  const prevId=document.activeElement&&document.activeElement.id;const keepQ={};app.querySelectorAll('.qin').forEach(q=>{if(q.value)keepQ[q.dataset.x]=q.value});
   const b=getB(S.cur);if(!b)return renderHome();
   const R=mergeEngine(b,model(b)),BX=boxes(b),st=R.P.st;
   if(UI.box>=BX.length)UI.box=0;
@@ -1280,6 +1286,7 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
       ${UI.batch.length?`<div class="bchips">${UI.batch.map(it=>{const q=lr(b,it.x);return `<span class="bchip">${boxPrefix(b,q.bx)}${it.s==='R'?`ขวา ${q.R}`:`ซ้าย ${q.L}`} <small>#${it.x}</small><button onclick="rmBatch(${it.x})" aria-label="เอาออก">✕</button></span>`}).join('')}</div>
       <div class="row" style="margin-top:8px"><button class="btn gold" onclick="startBatch()">จดเลข ${UI.batch.length} ซอง →</button><button class="btn sm" onclick="UI.batch=[];renderBoard('pos')">ล้าง</button></div>`:''}
     </div>`:''}`:''}
+    ${batchHTML(b)}
     ${rec}
     <div class="card" style="margin-top:14px">
       <div class="t">🎯 ซองที่น่าจุ่ม <span class="muted small" style="font-weight:400">(นับจากซองที่เหลือตอนนี้)</span></div>
@@ -1314,8 +1321,12 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
   if(inp)inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();goPos()}};
   if(ni)ni.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();saveNum(UI.sel)}};
   const ti=$('#tgIn');if(ti)ti.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();setTarget()}};
+  app.querySelectorAll('.qin').forEach(q=>{if(keepQ[q.dataset.x])q.value=keepQ[q.dataset.x]});
+  app.querySelectorAll('.qin').forEach(q=>q.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();saveQ(+q.dataset.x)}});
   if(UI.sel&&ni){ni.focus();ni.select();$('#rec').scrollIntoView({block:'nearest',behavior:'smooth'})}
+  else if(focus==='q'){const q=[...app.querySelectorAll('.qin')].find(e=>!e.value)||app.querySelector('.qin');if(q){q.focus({preventScroll:true});$('#qpanel').scrollIntoView({block:'nearest',behavior:'smooth'})}else if(inp)inp.focus({preventScroll:true})}
   else if(focus==='pos'&&inp)inp.focus({preventScroll:true});
+  else if(!focus&&prevId&&prevId!=='numIn'){const e=document.getElementById(prevId);if(e&&e!==document.activeElement)e.focus({preventScroll:true})}
 }
 function setSide(s){UI.side=s;const v=$('#posN')?.value;renderBoard('pos');if(v&&$('#posN'))$('#posN').value=v}
 function selPos(x){const b=getB(S.cur);if(UI.multi&&!UI.queue.length&&!b.opened[x]){const i=UI.batch.findIndex(it=>it.x===x);if(i>=0)UI.batch.splice(i,1);else UI.batch.push({x,s:UI.side==='R'?'R':'L'});renderBoard('pos');return}UI.sel=x;UI.pick=null;const bx=boxOf(b,x);if(bx)UI.box=bx.i;renderBoard()}
@@ -1337,19 +1348,49 @@ function startBatch(){
   UI.qsnap={};
   // เก็บคำทาย/ตำแหน่งของทุกซองก่อน เพราะทุกซองถูกเลือกจากกล่องสภาพเดียวกัน
   UI.batch.forEach(it=>{UI.pick={x:it.x,s:it.s};try{UI.qsnap[it.x]=snapPred(b,it.x)}catch(e){UI.qsnap[it.x]=null}});
-  UI.pick=null;UI.queue=UI.batch.map(it=>it.x);UI.qn=UI.queue.length;UI.batch=[];
-  UI.sel=UI.queue[0];renderBoard();
+  UI.pick=null;UI.queue=UI.batch.map(it=>it.x);UI.qall=UI.queue.slice();UI.qn=UI.queue.length;UI.batch=[];
+  UI.sel=null;renderBoard('q');
 }
-function nextQ(){UI.sel=UI.queue.length?UI.queue[0]:null;if(!UI.queue.length){UI.qsnap={};UI.qn=0}}
-function skipQ(x){UI.queue=UI.queue.filter(y=>y!==x);delete UI.qsnap[x];nextQ();renderBoard(UI.sel?undefined:'pos')}
-function cancelQ(){UI.queue=[];UI.qsnap={};UI.qn=0;UI.sel=null;renderBoard('pos')}
-function saveNum(x){
-  const b=getB(S.cur),v=parseInt($('#numIn').value);
-  if(!v||v<1||v>NM(b)){toast(`ใส่เลข 1–${NM(b)}`);return}
+function nextQ(){UI.sel=null}
+function skipQ(x){UI.queue=UI.queue.filter(y=>y!==x);UI.qall=UI.qall.filter(y=>y!==x);delete UI.qsnap[x];if(!UI.qall.length)cancelQ();else renderBoard('q')}
+function cancelQ(){UI.queue=[];UI.qall=[];UI.qsnap={};UI.qn=0;UI.sel=null;renderBoard('pos')}
+function numErr(b,x,v){
+  if(!v||v<1||v>NM(b))return `ใส่เลข 1–${NM(b)}`;
   const at=usedNums(b).get(v);
-  if(at===0){const a=archNums(b).get(v);toast(`เลข ${pad(v)} ออกไปแล้วในรอบก่อน (รอบ ${a.round}) ก่อนร้านสับใหม่`);return}
-  if(at!==undefined&&at!==x){toast(`เลข ${pad(v)} บันทึกไว้แล้วที่ซองตำแหน่งเดิม #${at}\nถ้าจดผิด แตะรายการนั้นในช่อง “ออกแล้ว” เพื่อแก้`);return}
+  if(at===0){const a=archNums(b).get(v);return `เลข ${pad(v)} ออกไปแล้วในรอบก่อน (รอบ ${a.round}) ก่อนร้านสับใหม่`}
+  if(at!==undefined&&at!==x)return `เลข ${pad(v)} บันทึกไว้แล้วที่ซองตำแหน่งเดิม #${at}\nถ้าจดผิด แตะรายการนั้นในช่อง “ออกแล้ว” เพื่อแก้`;
+  return null;
+}
+function saveNum(x){
+  const b=getB(S.cur),v=parseInt($('#numIn').value),e=numErr(b,x,v);
+  if(e){toast(e);return}
   mark(x,v);
+}
+/* ชุดหลายซอง: จดซองไหนก่อนก็ได้ ตามที่ร้านเปิด */
+function saveQ(x,salt){
+  const b=getB(S.cur);
+  if(salt){mark(x,null);return}
+  const el=document.getElementById('qn_'+x),v=parseInt(el&&el.value),e=numErr(b,x,v);
+  if(e){toast(e);return}
+  mark(x,v);
+}
+function batchHTML(b){
+  if(!UI.qall.length)return '';
+  const rows=UI.qall.map(x=>{
+    const qs=UI.qsnap[x],done=!UI.queue.includes(x),o=b.opened[x];
+    const pos=qs&&qs.L?(qs.side==='R'?`ขวา ${qs.R}`:`ซ้าย ${qs.L}`):`#${x}`;
+    const pre=boxes(b).length>1&&qs?`ก.${(qs.bx||0)+1} `:'';
+    if(done&&o){const v=val(o);return `<div class="qrow done"><span class="qpos">${pre}${pos} <small>#${x}</small></span><span class="qval${isHitV(b,v)?' hit':''}">${v==null?'เกลือ':isHitV(b,v)?'★'+pad(v):pad(v)}</span><button class="btn sm" onclick="selPos(${x})">แก้</button></div>`}
+    const g=qs&&qs.g?qs.g.slice(0,3).map(t=>`${isHitV(b,t[0])?'★':''}${pad(t[0])}`).join(' / '):'';
+    return `<div class="qrow"><span class="qpos">${pre}${pos} <small>#${x}${qs&&qs.ph!=null?` · ฮิต ${pct(qs.ph)}`:''}${g?` · น่าจะเป็น ${g}`:''}</small></span>
+      <input class="qin" id="qn_${x}" data-x="${x}" type="number" inputmode="numeric" enterkeyhint="next" min="1" max="${NM(b)}" placeholder="เลข">
+      <button class="btn gold sm" onclick="saveQ(${x})">บันทึก</button><button class="btn sm" onclick="saveQ(${x},1)">เกลือ</button><button class="btn sm" onclick="skipQ(${x})" title="ยังไม่เปิด / ไม่ได้ซื้อ">ข้าม</button></div>`;
+  }).join('');
+  const left=UI.queue.length;
+  return `<div class="rec qpanel" id="qpanel"><div class="where">ชุดหลายซอง · จดแล้ว ${UI.qall.length-left}/${UI.qall.length}</div>
+    <div class="small muted" style="margin:2px 0 8px">ตำแหน่งนับจากกล่องก่อนหยิบชุดนี้ · ร้านเปิดซองไหนก่อน ใส่เลขซองนั้นก่อนได้เลย (Enter = บันทึกแถวนั้น)</div>
+    ${rows}
+    <div class="row" style="margin-top:10px">${left?`<button class="btn sm" onclick="cancelQ()">ยกเลิกซองที่ยังไม่จด (${left})</button>`:`<button class="btn gold sm" onclick="cancelQ()">เสร็จชุดนี้</button>`}<span class="small muted">ฮิต = ${hitRangeText(b)}</span></div></div>`;
 }
 function openSettings(){
   const b=getB(S.cur);
@@ -1397,7 +1438,7 @@ function mark(x,v){
   b.opened[x]={v};if(!seq.includes(x))seq.push(x);
   if(sp){if(!b.pred||typeof b.pred!=='object')b.pred={};b.pred[x]=sp}
   UI.pick=null;
-  if(UI.queue.includes(x)){UI.queue=UI.queue.filter(y=>y!==x);delete UI.qsnap[x];nextQ();save();renderBoard(UI.sel?undefined:'pos');return}
+  if(UI.queue.includes(x)){UI.queue=UI.queue.filter(y=>y!==x);UI.sel=null;save();renderBoard('q');return}
   UI.sel=null;save();renderBoard('pos');
 }
 function unmark(x){
