@@ -905,15 +905,18 @@ function gBadge(G){if(!G)return'';const a=[];
   if(G.tgt&&G.P.tg&&G.P.tg.rk!=null&&G.P.tg.rk<5)a.push('<span class="gb">🔎 เจอเลขที่ตามล่า</span>');
   return a.join('')}
 function roundsOf(b){return [...archOf(b).map((r,i)=>({cfg:r,opened:r.opened||{},pred:r.pred||{},seq:r.seq||Object.keys(r.opened||{}).map(Number),round:i+1,arch:true})),{cfg:b,opened:b.opened,pred:b.pred||{},seq:seqOf(b),round:archOf(b).length+1,arch:false}]}
-function nearSize(g){const t=g[0][0],st=new Set();for(let d=-2;d<=2;d++)if(t+d>=1)st.add(t+d);g.forEach(o=>st.add(o[0]));return st.size}
+function nearSize(g,seen,M){const t=g[0][0],st=new Set();for(let d=-2;d<=2;d++){const u=t+d;if(u>=1&&u<=M&&!seen.has(u))st.add(u)}g.forEach(o=>{if(!seen.has(o[0]))st.add(o[0])});return Math.max(1,st.size)}
 function scoreOf(bs){
   const s={n:0,ex:0,nr:0,rEx:0,rNr:0,nh:0,ct:0,rCt:0,nt:0,tt:0,rT:0,recs:0};
-  bs.forEach(b=>roundsOf(b).forEach(r=>Object.keys(r.pred).forEach(k=>{
+  bs.forEach(b=>{const seen=new Set();roundsOf(b).forEach(r=>{
+    // เลขที่ออกไปแล้วก่อนซองนี้ (ใช้คิดโอกาสเดามั่วให้ถูก: เดาได้เฉพาะเลขที่ยังไม่ออก)
+    const before=new Map();r.seq.forEach(x=>{before.set(x,new Set(seen));const o=r.opened[x];if(o&&val(o)!=null)seen.add(val(o))});
+    Object.keys(r.pred).forEach(k=>{
     const G=gradeOf(b,r.opened,r.pred,+k);if(!G)return;const P=G.P;s.recs++;
-    if(G.v!=null&&P.g&&P.g.length){const Ug=Math.max(1,P.Ug||P.U);s.n++;if(G.exact)s.ex++;if(G.exact||G.near)s.nr++;s.rEx+=1/Ug;s.rNr+=Math.min(1,nearSize(P.g)/Ug)}
+    if(G.v!=null&&P.g&&P.g.length){const Ug=Math.max(1,P.Ug||P.U);s.n++;if(G.exact)s.ex++;if(G.exact||G.near)s.nr++;s.rEx+=1/Ug;s.rNr+=Math.min(1,nearSize(P.g,before.get(+k)||new Set(),NM(b))/Ug)}
     if(G.hit&&P.rk!=null){s.nh++;if(G.caught)s.ct++;s.rCt+=Math.min(1,5/Math.max(1,P.U))}
     if(G.tgt){s.nt++;if(P.tg.rk!=null&&P.tg.rk<5)s.tt++;s.rT+=Math.min(1,5/Math.max(1,P.U))}
-  })));
+  })})});
   return s;
 }
 const f1=v=>v<10?v.toFixed(1).replace(/\.0$/,''):Math.round(v)+'';
