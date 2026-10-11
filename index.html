@@ -433,7 +433,7 @@ function styleHTML(b,st){
   if(!st)return '';
   const few=st.n<10,conf=st.p>=0.75?'ค่อนข้างแน่':st.p>=0.5?'น่าจะ':'ยังก้ำกึ่ง';
   const det=[];
-  if(st.k==='blocks'||st.k==='none')det.push(`ก้อนยาวราว ${Math.max(2,Math.round(st.len*0.7))}–${Math.round(st.len*1.4)} ซอง`);
+  if(st.k==='blocks'||st.k==='none'){const lo=Math.max(2,Math.round(st.len*0.7)),hi=Math.max(lo,Math.round(st.len*1.4));det.push(lo===hi?`ก้อนสั้น ราว ${lo} ซอง`:`ก้อนยาวราว ${lo}–${hi} ซอง`)}
   if(st.rev)det.push(`บางก้อนกลับหัว (เลขถอยหลัง ${Math.min(st.fw,st.bw)} คู่ จาก ${st.fw+st.bw})`);
   if(st.k!=='random'&&Math.abs(st.dir)>0.35)det.push(st.dir>0?'ส่วนใหญ่เลขเพิ่มไปทางขวา →':'ส่วนใหญ่เลขเพิ่มไปทางซ้าย ←');
   const sh=shopStyle(b.shop,b.id);
