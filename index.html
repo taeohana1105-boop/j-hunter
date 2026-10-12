@@ -774,6 +774,7 @@ function blendW(b){
 }
 /* โอกาสที่เลข u อยู่ในซอง x (ไม่มีเงื่อนไข: รวมโอกาสที่เลขนั้นไม่อยู่ในกล่องแล้วด้วย) */
 function pOfNum(R,x,u){
+  if(R.randomMode)return R.idx&&R.idx.has(x)?Math.min(1,R.U/Math.max(1,R.nUnseen))/Math.max(1,R.U):0;
   let hp=0;
   if(R.dist&&R.idx.has(x)){const d=R.dist(u);hp=d.p[R.idx.get(x)]*Math.min(1,R.U/Math.max(1,R.nUnseen))}
   if(!R.E)return hp;
@@ -817,6 +818,16 @@ function mergeEngine(b,R,start=true){
     const row=E.fval.map(u=>({u,p:G[x*VP+u]})).sort((a,c)=>c.p-a.p).slice(0,3);
     return row[0]&&row[0].p>1.5/Math.max(1,E.fval.length)?row:null;
   };
+  /* ร้านสับทั่วจริง: เลิกคำนวณจากซองข้าง ๆ ทุกซอง/ทุกเลขที่ยังไม่ออกมีโอกาสเท่ากัน */
+  if((b.mode||'auto')==='auto'&&(R.obsN||0)>=10){
+    const st=styleOf(E,obsOf(b),b.total);
+    if(st.k==='random'&&st.p>=0.7){
+      R.randomMode=true;R.randomP=st.p;
+      un.forEach(x=>R.prob[x]=R.base);R.mx=R.mn=R.base;R.spread=false;R.top=[];
+      R.perHit=[];R.diffuse=hitList(b).filter(u=>!used.has(u));
+      R.guessP=()=>null;R.guess=()=>null;
+    }
+  }
   return R;
 }
 function dirInfo(E){const d=E.post.pDir;return d>0.35?{k:1,t:'เลขมักเพิ่มขึ้นไปทางขวา →',conf:(d+1)/2}:d<-0.35?{k:-1,t:'เลขมักเพิ่มขึ้นไปทางซ้าย ←',conf:(1-d)/2}:{k:0,t:'ยังไม่รู้ว่าเลขเรียงไปทางไหน',conf:0.5}}
@@ -1339,6 +1350,7 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
       ${RB!=='hit'?(ranked.length?`<div class="small muted" style="margin-top:8px">เรียงจาก${RB==='target'?'โอกาสเป็นเลขที่ตามล่า':'ความคุ้มต่อซอง (หักราคาแล้ว)'}สูงสุด · แตะการ์ดเพื่อเลือกซอง</div><div class="picks">${ranked.slice(0,5).map((x,i)=>pickCard(b,x,R,i,RB,T,EV)).join('')}</div>`:'<div class="muted small" style="margin-top:6px">ยังไม่มีเบาะแสพอจะเรียง — ทุกซองใกล้เคียงกัน</div>'):
         R.H===0?'<div class="muted small">ฮิตออกครบแล้ว</div>':
         !R.obsN?'<div class="muted small" style="margin-top:4px">ยังไม่มีข้อมูล — จดเลขซองที่คนอื่นเปิด (ทั้งเกลือและฮิต) สัก 5–10 ซอง แอปจะเริ่มหาโซน</div>':
+        R.randomMode?`<div class="adv adv-no" style="margin:8px 0 0"><div class="adv-t" style="font-size:16px">🎲 ร้านนี้สับทั่วจริง (มั่นใจ ${pctC(R.randomP)}) — ปิดการชี้ซองและการคำนวณเลข</div><div class="adv-w">เลขที่ออกไม่ได้บอกอะไรเกี่ยวกับซองข้าง ๆ เลย ทุกซองที่เหลือมีโอกาสติดฮิตเท่ากัน ${pct(R.base)} · ทุกเลขที่ยังไม่ออกมีโอกาสอยู่ในซองไหนก็ได้เท่ากัน · ใช้ฮิตเรทและความคุ้มช่วยตัดสินใจแทน</div></div>`:
         !R.spread?'<div class="muted small" style="margin-top:4px">ยังไม่มีเลขที่ใกล้ฮิตพอจะชี้โซนได้ — ตอนนี้ทุกซองโอกาสใกล้เคียงกัน</div>':
         `<div class="small muted" style="margin-top:8px">เรียงจากโอกาสติดฮิตสูงสุด · แตะการ์ดเพื่อเลือกซอง${R.E?' · กด “เหตุผล” เพื่อดูที่มา':''}</div><div class="picks">${R.top.slice(0,5).map((x,i)=>pickCard(b,x,R,i,'hit',T,EV)).join('')}</div>`}
       ${R.pending?'<div class="calc">⏳ กำลังคำนวณแบบละเอียด (Bayesian)… ระหว่างนี้แสดงผลจากโมเดลเร็วไปก่อน</div>':''}
