@@ -233,6 +233,15 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
 .qrow .qpos small{font-family:var(--body);color:var(--muted);font-size:12px}
 .qrow .qin{width:92px;text-align:center;font-family:var(--num);font-weight:700;font-size:18px;background:var(--panel2);border:1px solid var(--gold);color:var(--ink);border-radius:10px;padding:5px 6px}
 .qrow.done{opacity:.75}.qrow .qval{font-family:var(--num);font-weight:700;font-size:18px}.qrow .qval.hit{color:var(--gold2)}
+.adv{border-radius:12px;padding:10px 14px;margin-bottom:14px;border:1px solid}
+.adv-t{font-family:var(--display);font-size:18px;font-weight:600}
+.adv-w{font-size:13px;margin-top:3px;color:var(--ink);opacity:.85;line-height:1.5}
+.adv-go{background:rgba(61,220,132,.10);border-color:rgba(61,220,132,.5)}.adv-go .adv-t{color:var(--ok)}
+.adv-wait{background:rgba(232,207,142,.08);border-color:rgba(232,207,142,.5)}.adv-wait .adv-t{color:var(--gold2)}
+.adv-no{background:rgba(255,100,100,.08);border-color:rgba(255,120,120,.5)}.adv-no .adv-t{color:#FF8A8A}
+.adv-pill{display:inline-block;margin-top:6px;font-size:12px;font-weight:600;border:1px solid;border-radius:99px;padding:2px 10px}
+.adv-pill.adv-go{color:var(--ok)}.adv-pill.adv-wait{color:var(--gold2)}.adv-pill.adv-no{color:#FF8A8A}
+.adv-ok{background:rgba(155,231,184,.06);border-color:rgba(155,231,184,.4)}.adv-ok .adv-t{color:var(--ok2)}.adv-pill.adv-ok{color:var(--ok2)}
 </style>
 </head>
 <body>
@@ -1113,6 +1122,37 @@ function renderShop(){setTimeout(()=>window.paintSync&&paintSync(),0);
   ${rows.length?rows.map(({b,c})=>boardCard(b,c)).join(''):'<p class="muted small">ยังไม่มีกระดาน กด “เพิ่มกระดาน”</p>'}
   ${cl.length?`<h3>ปิดแล้ว (${cl.length})</h3>${cl.map(b=>boardCard(b,null)).join('')}`:''}`;
 }
+/* ===== ควรเล่นตอนนี้ไหม =====
+   รอกี่ซอง: นับเลขที่ยังไม่ออก ที่อยู่ห่างจากฮิตที่เหลือ (ใบอื่น) ไม่เกิน 3 เลข — เปิดเจอเลขพวกนี้ (รวมฮิตเอง) = ได้เบาะแส
+   ทุกซองที่คนอื่นเปิด มีโอกาส q = จำนวนนั้น / เลขที่ยังไม่ออก ที่จะเป็น “เบาะแส” ใกล้ฮิต → คาดว่าต้องรอราว 1/q ซอง */
+function waitForClue(b,R){
+  const used=usedNums(b),HL=new Set(hitList(b)),M=NM(b);
+  const hs=hitList(b).filter(u=>!used.has(u));let near=0,unseen=0;
+  for(let u=1;u<=M;u++){if(used.has(u))continue;unseen++;if(hs.some(h=>h!==u&&Math.abs(h-u)<=3))near++}
+  if(!near||!unseen)return null;
+  return clamp(Math.ceil(unseen/near),1,Math.max(1,(R.U||1)-1));
+}
+function adviceOf(b,R,sty){
+  if(b.closed||!R.U||!R.H)return null;
+  const n=R.obsN||0,clue=waitForClue(b,R);
+  const best=R.spread&&R.top.length?R.top[0]:null,ratio=best?R.prob[best]/Math.max(1e-9,R.base):1;
+  const EV=evInfo(b,R);
+  if(n<8||!sty){const w=Math.max(8-n,1);
+    return{k:'wait',w,t:`ยังไม่แนะนำให้เล่น · รอคนอื่นเปิดอีก ${w} ซอง`,why:`ข้อมูลยังน้อย (จดแล้ว ${n} ซอง) แอปยังบอกไม่ได้ว่าร้านนี้สับทั่วหรือไม่ ต้องจดอย่างน้อย 8 ซอง`}}
+  if(sty.k==='random'&&sty.p>=0.6)
+    return{k:'no',t:'ไม่แนะนำให้เล่นตามแอป · ร้านนี้สับทั่ว',why:`ทุกซองโอกาสพอ ๆ กัน (ราว ${pct(R.base)}) แอปชี้ซองไม่ได้ และรอนานแค่ไหนก็ไม่ช่วย${EV?` · จุ่มสุ่มเฉลี่ย ${money(EV.board)} ต่อซอง`:''}`};
+  if(sty.p<0.5&&n<20){const w=Math.max(3,Math.min(20-n,clue||99));
+    return{k:'wait',w,t:`ยังไม่แนะนำให้เล่น · รอคนอื่นเปิดอีกราว ${w} ซอง`,why:`ยังไม่แน่ใจว่าร้านสับแบบไหน (${STYLE[sty.k].n} ${pctC(sty.p)}) ข้อมูลเพิ่มอีกหน่อยจะชัดขึ้น`}}
+  if(ratio<1.5){const w=clue||3;
+    return{k:'wait',w,t:`ยังไม่แนะนำให้เล่น · รอคนอื่นเปิดอีกราว ${w} ซอง`,why:`ร้านนี้สับไม่ทั่ว (${STYLE[sty.k].n}) แต่ตอนนี้ยังไม่มีซองที่เด่น ซองดีสุดสูงกว่าสุ่มแค่ ${ratio.toFixed(1)} เท่า · ต้องรอให้มีคนเปิดเจอเลขที่อยู่ใกล้ฮิต (±3) ก่อน แอปถึงชี้ได้ — คาดว่าราว ${w} ซองจะเจอสักซอง`}}
+  const q=lr(b,best);
+  if(EV&&EV.price&&EV.ev[best]<0)
+    return{k:'wait',w:clue||3,t:`มีซองเด่น แต่ยังไม่คุ้มราคา`,why:`ซอง ${boxPrefix(b,q.bx)}ซ้าย ${q.L}/ขวา ${q.R} โอกาสฮิต ${pct(R.prob[best])} (สูงกว่าสุ่ม ${ratio.toFixed(1)} เท่า) แต่คาดว่าได้ ${money(EV.ev[best])} ต่อซอง`};
+  if(ratio<2.5)return{k:'ok',w:clue||3,t:`พอเล่นได้ · ซอง ${boxPrefix(b,q.bx)}ซ้าย ${q.L} / ขวา ${q.R}`,why:`โอกาสฮิต ${pct(R.prob[best])} สูงกว่าสุ่ม ${ratio.toFixed(1)} เท่า — ยังไม่เด่นมาก ถ้ารอให้คนอื่นเปิดอีกราว ${clue||3} ซอง มักจะเห็นเบาะแสใกล้ฮิตชัดขึ้น${EV?` · คาดว่าได้ ${money(EV.ev[best])} ต่อซอง`:''}`};
+  return{k:'go',t:`น่าเล่น · ซอง ${boxPrefix(b,q.bx)}ซ้าย ${q.L} / ขวา ${q.R}`,why:`โอกาสฮิต ${pct(R.prob[best])} สูงกว่าสุ่ม ${ratio.toFixed(1)} เท่า · ร้านนี้${STYLE[sty.k].n}${EV?` · คาดว่าได้ ${money(EV.ev[best])} ต่อซอง`:''}`};
+}
+function adviceHTML(A){if(!A)return'';const ic={go:'✅',ok:'🟡',wait:'⏳',no:'⛔'}[A.k];
+  return `<div class="adv adv-${A.k}"><div class="adv-t">${ic} ${A.t}</div><div class="adv-w">${A.why}</div></div>`}
 function boardCard(b,c){
   const f=foundHitsAll(b).length,o=Object.keys(b.opened).length,U=b.total-o,H=hitList(b).length-f;
   let right='';
@@ -1122,11 +1162,13 @@ function boardCard(b,c){
       <div><b>${pct(c.R.base)}</b><span>ฮิตเรทตอนนี้</span></div>
       <div class="hi"><b>${best?pct(best.p):pct(c.R.base)}</b><span>${best?`ซองดีสุด · ${boxes(b).length>1?`กล่อง ${best.lr.bx.i+1} `:''}ซ้าย ${best.lr.L} / ขวา ${best.lr.R}`:'ทุกซองเท่ากัน'}</span></div></div>`;
   }
+  const A=!b.closed&&c&&c.R.U?adviceOf(b,c.R,b.style||null):null;
   return `<div class="card click bcard" role="button" tabindex="0" onclick="openBoard('${b.id}')" onkeydown="if(event.key==='Enter')openBoard('${b.id}')">
     <div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="t">${esc(b.name)}${b.closed?'<span class="pill">ปิดแล้ว</span>':''}</div>
     <div class="muted small num" style="margin-top:2px">${archOf(b).length?`รอบ ${archOf(b).length+1} · `:''}${b.total} ซอง${boxes(b).length>1?` (${boxes(b).length} กล่อง)`:''} · ฮิต ${hitRangeText(b)}${b.refill?' · เติมซอง':''}</div></div>${right}</div>
     <div class="progress"><i style="width:${(o/b.total*100).toFixed(1)}%"></i></div>
     <div class="muted small num">เหลือ ${U}/${b.total} ซอง · ฮิตเหลือ ${H}/${hitList(b).length}${b.closed?'':` · จดแล้ว ${o} ซอง`}</div>
+    ${A?`<div class="adv-pill adv-${A.k}">${{go:'✅',ok:'🟡',wait:'⏳',no:'⛔'}[A.k]} ${A.k==='wait'&&A.w?`รออีกราว ${A.w} ซอง`:A.k==='go'?'น่าเล่น':A.k==='ok'?'พอเล่นได้':'ไม่แนะนำ · สับทั่ว'}</div>`:''}
     <div class="row bc-acts">${b.closed?`<button class="btn sm" onclick="event.stopPropagation();reopenId('${b.id}')">เปิดกระดานอีกครั้ง</button>`:''}<button class="btn sm red" onclick="event.stopPropagation();delBoardId('${b.id}')">ลบกระดาน</button></div></div>`;
 }
 
@@ -1261,6 +1303,7 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
     <div class="stat"><b>${R.spread?pct(R.mx):R.U?pct(R.base):'–'}</b><span>ซองที่ดีที่สุด</span></div>
     ${EV?`<div class="stat"><b class="${EV.mx>=0?'ev-pos':'ev-neg'}" style="font-size:19px">${money(EV.mx)}</b><span>ซองคุ้มสุด (สุ่ม ${money(EV.board)})</span></div>`:''}
   </div>
+  ${adviceHTML(adviceOf(b,R,STY))}
   ${SC.recs?scoreHTML(SC,nArch?'ทุกรอบของกระดานนี้':''):Object.keys(b.opened).length?'':'<p class="note" style="margin:-6px 0 12px">ทุกครั้งที่จด แอปจะเก็บคำทายของซองนั้นไว้ก่อน แล้วให้คะแนนว่าทายถูกไหม · <span style="color:var(--ok)">เขียว = ทายเลขตรง</span> · <span style="color:var(--ok2)">เขียวอ่อน = ทายใกล้</span> · ขอบเขียว = ฮิตออกจากซองท็อป 5 ที่แนะนำ</p>'}
   <div class="play"><div>
     <div class="boxes">${boxHTML}</div>
