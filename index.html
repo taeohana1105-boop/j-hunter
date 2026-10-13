@@ -1078,6 +1078,7 @@ function renderHome(){setTimeout(()=>window.paintSync&&paintSync(),0);
   app.innerHTML=`
   <header class="top"><div class="brand">J Hunter<small>HIT TRACKER</small></div><span id="syncPill" class="sync"></span></header>
   <button class="btn gold block" onclick="openShopSheet()">+ เพิ่มร้าน</button>
+  <a class="btn block" href="clip.html" style="margin-top:8px;text-decoration:none;color:var(--gold2)">✂︎ ตัดคลิปไลฟ์ · เหลือเฉพาะตอนหยิบซอง</a>
   <h3>ร้านจุ่ม (${shops.length})</h3>
   ${shops.length?shops.map(shopCard).join(''):'<p class="muted small">ยังไม่มีร้าน กด “เพิ่มร้าน” เพื่อเริ่ม</p>'}
   <h3>สำรองข้อมูล</h3>

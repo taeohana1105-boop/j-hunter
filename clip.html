@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>J Hunter · ตัดคลิป</title>
+<link rel="icon" href="icon-32.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@600;700&family=Inter:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0E0F13;--panel:#1A1C23;--panel2:#22252E;--ink:#F3EDE2;--muted:#8A8F9C;--line:rgba(201,164,92,.16);--gold:#C9A45C;--gold2:#E8CF8E;--ok:#3DDC84;--red:#B3263A;
+--body:'IBM Plex Sans Thai',system-ui,sans-serif;--display:'Noto Serif Thai',serif;--num:'Inter',system-ui,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-text-size-adjust:100%}
+.wrap{max-width:960px;margin:0 auto;padding:16px 16px calc(40px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.brand{font-family:var(--display);font-size:24px;font-weight:700;background:linear-gradient(90deg,#E8CF8E,#C9A45C);-webkit-background-clip:text;background-clip:text;color:transparent}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 16px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);font:600 15px var(--body);cursor:pointer;text-decoration:none}
+.btn.gold{background:var(--gold);color:#14151A;border:0}
+.btn.sm{min-height:36px;padding:6px 12px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:default}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+h3{font-family:var(--display);color:var(--gold2);font-size:16px;margin:0 0 8px}
+.muted{color:var(--muted)}.small{font-size:13px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.stage{position:relative;background:#000;border-radius:12px;overflow:hidden;touch-action:none}
+.stage video{display:block;width:100%;max-height:62vh;background:#000}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;pointer-events:none}
+.hint{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:rgba(14,15,19,.85);border:1px solid var(--gold);color:var(--gold2);padding:6px 12px;border-radius:99px;font-size:13px;pointer-events:none;white-space:nowrap}
+.set{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:10px}
+.set label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+.set input[type=range]{width:100%;accent-color:var(--gold)}
+.set b{color:var(--gold2);font-family:var(--num)}
+.prog{height:10px;border-radius:5px;background:var(--panel2);overflow:hidden;margin:10px 0 4px}
+.prog i{display:block;height:100%;width:0;background:var(--gold);transition:width .2s}
+.tl{position:relative;height:28px;border-radius:8px;background:var(--panel2);margin:10px 0;cursor:pointer;overflow:hidden}
+.tl i{position:absolute;top:0;bottom:0;background:var(--gold);opacity:.85}
+.tl .ph{position:absolute;top:0;bottom:0;width:2px;background:#fff}
+.sum{font-size:15px}.sum b{color:var(--gold2);font-family:var(--num)}
+.segs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;max-height:220px;overflow:auto}
+.segs button{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:99px;padding:6px 12px;font:600 13px var(--num);cursor:pointer}
+.segs button.on{border-color:var(--gold);color:var(--gold2);background:rgba(201,164,92,.15)}
+.seg{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:3px}
+.seg button{border:0;background:transparent;border-radius:9px;padding:6px 12px;font-weight:600;color:var(--muted);min-height:34px;cursor:pointer;font-family:var(--body)}
+.seg button[aria-pressed="true"]{background:var(--gold);color:#14151A}
+.note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:8px}
+.big{font-family:var(--num);font-size:18px;color:var(--gold2)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><a class="btn sm" href="./">‹ J Hunter</a><div class="brand">✂︎ ตัดคลิป</div></header>
+
+  <div class="card" id="step1">
+    <h3>1 · เลือกคลิปที่อัดหน้าจอไว้</h3>
+    <div class="row"><label class="btn gold">เลือกคลิป<input type="file" id="file" accept="video/*" hidden></label><span class="small muted" id="fname">คลิปอยู่ในเครื่องนี้เท่านั้น ไม่ได้อัปโหลดไปไหน</span></div>
+  </div>
+
+  <div class="card" id="step2" hidden>
+    <h3>2 · ลากกรอบครอบเฉพาะกล่องซอง</h3>
+    <div class="stage" id="stage"><video id="vid" playsinline controls preload="metadata"></video><canvas id="ov"></canvas><div class="hint" id="hint" hidden>ลากนิ้วครอบกล่องซอง</div></div>
+    <div class="row" style="margin-top:10px">
+      <div class="seg"><button id="mPlay" aria-pressed="true">▶ ดูคลิป / เลื่อนหา</button><button id="mDraw" aria-pressed="false">✏️ ลากกรอบ</button></div>
+      <span class="small muted" id="roiTxt">ยังไม่ได้ลากกรอบ (จะใช้ทั้งภาพ)</span>
+    </div>
+    <p class="note">เลื่อนคลิปไปตอนที่เห็นกล่องชัด ๆ แล้วกด “✏️ ลากกรอบ” ลากครอบเฉพาะกล่องซอง แอปจะดูการขยับในกรอบนี้อย่างเดียว หน้าคน คอมเมนต์ และส่วนอื่นของจอจะไม่ถูกนับ</p>
+    <div class="set">
+      <div><label>ความไว <b id="vSens">6</b> (สูง = จับการขยับเล็ก ๆ ด้วย)</label><input type="range" id="sens" min="1" max="10" value="6"></div>
+      <div><label>เผื่อก่อนหยิบ <b id="vPre">2</b> วินาที</label><input type="range" id="pre" min="0" max="10" value="2"></div>
+      <div><label>เผื่อหลังหยิบ <b id="vPost">8</b> วินาที (ไว้ดูตอนแกะซอง)</label><input type="range" id="post" min="0" max="30" value="8"></div>
+      <div><label>รวมช่วงที่ห่างกันไม่เกิน <b id="vGap">5</b> วินาที</label><input type="range" id="gap" min="0" max="30" value="5"></div>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="btn gold" id="scanBtn">เริ่มหาช่วงที่มีการหยิบ</button><button class="btn sm" id="cancelBtn" hidden>หยุด</button></div>
+    <div id="progBox" hidden><div class="prog"><i id="prog"></i></div><div class="small muted" id="progTxt"></div></div>
+  </div>
+
+  <div class="card" id="step3" hidden>
+    <h3>3 · ดูเฉพาะช่วงที่มีการหยิบ</h3>
+    <div class="sum" id="sum"></div>
+    <div class="tl" id="tl"></div>
+    <div class="row">
+      <button class="btn gold" id="playCut">▶ เล่นเฉพาะช่วงที่หยิบ</button>
+      <button class="btn sm" id="prevSeg">⏮ ช่วงก่อน</button><button class="btn sm" id="nextSeg">ช่วงถัดไป ⏭</button>
+      <span class="big" id="segNo"></span>
+    </div>
+    <div class="row" style="margin-top:8px"><span class="small muted">ความเร็ว</span><div class="seg" id="rates"></div></div>
+    <div class="segs" id="segs"></div>
+    <p class="note">ปรับความไวหรือเวลาเผื่อด้านบนได้ทันที ไม่ต้องสแกนใหม่ · แตะแถบสีทองหรือเวลาเพื่อกระโดดไปช่วงนั้น · ถ้าเจอช่วงที่ไม่ใช่การหยิบ (เช่นแขนพาดผ่าน) ลดความไวลง</p>
+    <h3 style="margin-top:16px">บันทึกเป็นไฟล์คลิปใหม่</h3>
+    <div class="row"><span class="small muted">ความเร็วไฟล์</span><div class="seg" id="xrates"></div><button class="btn" id="exportBtn">💾 บันทึกคลิปที่ตัดแล้ว</button><button class="btn sm" id="exportStop" hidden>หยุดบันทึก</button></div>
+    <div id="xBox" hidden><div class="prog"><i id="xprog"></i></div><div class="small muted" id="xTxt"></div></div>
+    <p class="note">การบันทึกไฟล์จะเล่นคลิปช่วงที่ตัดไปพร้อมกับอัดเก็บ จึงใช้เวลาเท่าความยาวคลิปที่ได้ (ถ้าเลือก 2x จะใช้เวลาครึ่งหนึ่ง และไฟล์จะเล่นเร็ว 2 เท่า) · ระหว่างบันทึกอย่าสลับไปแอปอื่น</p>
+  </div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const vid=$('#vid'),ov=$('#ov'),octx=ov.getContext('2d');
+let url=null,roi=null,drawMode=false,samples=[],segs=[],cur=-1,cutPlay=false,scanAbort=false,dur=0;
+const fmt=t=>{t=Math.max(0,Math.round(t));const h=Math.floor(t/3600),m=Math.floor(t%3600/60),s=t%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(s).padStart(2,'0')};
+const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+['sens','pre','post','gap'].forEach(id=>{const el=$('#'+id),sv=ls.get('jhclip.'+id);if(sv!=null)el.value=sv;
+  const out=$('#v'+id[0].toUpperCase()+id.slice(1));const upd=()=>{out.textContent=el.value;ls.set('jhclip.'+id,el.value);if(samples.length)buildSegs()};el.oninput=upd;out.textContent=el.value});
+
+/* ---------- 1. เลือกไฟล์ ---------- */
+$('#file').onchange=e=>{const f=e.target.files[0];if(!f)return;
+  if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(f);vid.src=url;$('#fname').textContent=f.name+' · '+(f.size/1048576).toFixed(0)+' MB';
+  samples=[];segs=[];$('#step2').hidden=false;$('#step3').hidden=true;roiText();setDraw(false);
+  vid.onloadedmetadata=()=>{dur=vid.duration;sizeOv();drawRoi()};};
+/* ---------- 2. ลากกรอบ ---------- */
+function sizeOv(){const r=vid.getBoundingClientRect();ov.width=Math.round(r.width*devicePixelRatio);ov.height=Math.round(r.height*devicePixelRatio);drawRoi()}
+addEventListener('resize',sizeOv);
+function vidRect(){ // พื้นที่ภาพจริงในกรอบ video (ไม่รวมแถบดำ)
+  const W=ov.width,H=ov.height,vw=vid.videoWidth||16,vh=vid.videoHeight||9,s=Math.min(W/vw,H/vh);return{x:(W-vw*s)/2,y:(H-vh*s)/2,w:vw*s,h:vh*s}}
+function drawRoi(){octx.clearRect(0,0,ov.width,ov.height);if(!roi)return;const R=vidRect();
+  const x=R.x+roi.x*R.w,y=R.y+roi.y*R.h,w=roi.w*R.w,h=roi.h*R.h;
+  octx.fillStyle='rgba(0,0,0,.45)';octx.fillRect(0,0,ov.width,ov.height);octx.clearRect(x,y,w,h);
+  octx.strokeStyle='#E8CF8E';octx.lineWidth=3*devicePixelRatio;octx.strokeRect(x,y,w,h)}
+function roiText(){$('#roiTxt').textContent=roi?`กรอบ: ${Math.round(roi.w*100)}% × ${Math.round(roi.h*100)}% ของภาพ`:'ยังไม่ได้ลากกรอบ (จะใช้ทั้งภาพ)'}
+let dragStart=null;
+function pt(e){const r=ov.getBoundingClientRect(),R=vidRect();const px=(e.clientX-r.left)*devicePixelRatio,py=(e.clientY-r.top)*devicePixelRatio;return{x:Math.min(1,Math.max(0,(px-R.x)/R.w)),y:Math.min(1,Math.max(0,(py-R.y)/R.h))}}
+ov.onpointerdown=e=>{if(!drawMode)return;ov.setPointerCapture(e.pointerId);dragStart=pt(e);e.preventDefault()};
+ov.onpointermove=e=>{if(!dragStart)return;const p=pt(e);roi={x:Math.min(p.x,dragStart.x),y:Math.min(p.y,dragStart.y),w:Math.abs(p.x-dragStart.x),h:Math.abs(p.y-dragStart.y)};drawRoi()};
+ov.onpointerup=()=>{dragStart=null;if(roi&&(roi.w<0.03||roi.h<0.03))roi=null;drawRoi();roiText();if(roi)setDraw(false)};
+function setDraw(on){drawMode=on;ov.style.pointerEvents=on?'auto':'none';$('#mDraw').setAttribute('aria-pressed',on);$('#mPlay').setAttribute('aria-pressed',!on);$('#hint').hidden=!on;if(on)vid.pause()}
+$('#mDraw').onclick=()=>setDraw(true);$('#mPlay').onclick=()=>setDraw(false);
+
+/* ---------- สแกน: เล่นคลิปเร็วแบบไม่มีเสียงในเบื้องหลัง วัดความต่างของภาพในกรอบทุก 0.5 วินาที ---------- */
+const STEP=0.5,CW=64,CH=40;
+$('#scanBtn').onclick=async()=>{
+  if(!url)return;scanAbort=false;samples=[];$('#scanBtn').disabled=true;$('#cancelBtn').hidden=false;$('#progBox').hidden=false;
+  const v=document.createElement('video');v.src=url;v.muted=true;v.playsInline=true;v.preload='auto';
+  await new Promise(r=>{v.onloadedmetadata=r});
+  const c=document.createElement('canvas');c.width=CW;c.height=CH;const cx=c.getContext('2d',{willReadFrequently:true});
+  const D=v.duration,r=roi||{x:0,y:0,w:1,h:1},sx=r.x*v.videoWidth,sy=r.y*v.videoHeight,sw=Math.max(2,r.w*v.videoWidth),sh=Math.max(2,r.h*v.videoHeight);
+  let prev=null,last=-1,t0=performance.now();
+  const grab=()=>{const t=v.currentTime;if(t-last<STEP)return;last=t;
+    cx.drawImage(v,sx,sy,sw,sh,0,0,CW,CH);const d=cx.getImageData(0,0,CW,CH).data,g=new Float32Array(CW*CH);
+    for(let i=0;i<g.length;i++)g[i]=d[i*4]*.299+d[i*4+1]*.587+d[i*4+2]*.114;
+    if(prev){let s=0;for(let i=0;i<g.length;i++)s+=Math.abs(g[i]-prev[i]);samples.push([t,s/g.length])}prev=g;
+    const p=t/D,el=(performance.now()-t0)/1000;$('#prog').style.width=(p*100).toFixed(1)+'%';
+    $('#progTxt').textContent=`สแกนแล้ว ${fmt(t)} / ${fmt(D)}${p>0.02?` · เหลืออีกราว ${fmt(el/p*(1-p))}`:''}`};
+  let rate=16;try{v.playbackRate=rate}catch(e){rate=8;try{v.playbackRate=8}catch(e2){}}
+  await new Promise(res=>{
+    const tick=()=>{if(scanAbort||v.ended||v.currentTime>=D-0.05){res();return}grab();
+      if(v.requestVideoFrameCallback)v.requestVideoFrameCallback(tick);else requestAnimationFrame(tick)};
+    v.onended=()=>res();
+    v.play().then(tick).catch(async()=>{ // เล่นไม่ได้ → ใช้วิธีเลื่อนทีละจุด
+      for(let t=0;t<D&&!scanAbort;t+=STEP){v.currentTime=t;await new Promise(r=>v.onseeked=r);last=-1;grab()}res()});
+  });
+  v.pause();v.removeAttribute('src');v.load();
+  $('#scanBtn').disabled=false;$('#cancelBtn').hidden=true;
+  if(samples.length<4){$('#progTxt').textContent='สแกนไม่สำเร็จ ลองใหม่อีกครั้ง';return}
+  $('#prog').style.width='100%';$('#progTxt').textContent=scanAbort?`หยุดที่ ${fmt(samples[samples.length-1][0])} · ใช้ผลเท่าที่สแกนได้`:'สแกนเสร็จแล้ว';
+  ls.set('jhclip.roi',JSON.stringify(roi));
+  buildSegs();$('#step3').hidden=false;$('#step3').scrollIntoView({behavior:'smooth',block:'start'});
+};
+$('#cancelBtn').onclick=()=>{scanAbort=true};
+
+/* ---------- หาช่วง: ค่าที่สูงกว่าระดับปกติของคลิป (median + k·MAD) = มีการขยับ ---------- */
+function buildSegs(){
+  const vals=samples.map(s=>s[1]).sort((a,b)=>a-b),med=vals[Math.floor(vals.length/2)]||0;
+  const mad=(vals.map(v=>Math.abs(v-med)).sort((a,b)=>a-b)[Math.floor(vals.length/2)]||0)+0.15;
+  const k=[0,14,11,9,7.5,6.5,5.5,4.5,3.8,3.2,2.6][+$('#sens').value];
+  const thr=Math.max(med+k*mad,med+1.2);
+  const pre=+$('#pre').value,post=+$('#post').value,gap=+$('#gap').value;
+  const raw=[];samples.forEach(([t,v])=>{if(v>thr){const l=raw[raw.length-1];if(l&&t-l[1]<=gap+STEP)l[1]=t;else raw.push([t,t])}});
+  segs=[];raw.forEach(([a,b])=>{const s=Math.max(0,a-STEP-pre),e=Math.min(dur||b+post,b+post);const l=segs[segs.length-1];if(l&&s<=l[1])l[1]=Math.max(l[1],e);else segs.push([s,e])});
+  cur=-1;paint();
+}
+function paint(){
+  const total=segs.reduce((a,s)=>a+s[1]-s[0],0),D=dur||1;
+  $('#sum').innerHTML=segs.length?`เจอการหยิบ <b>${segs.length}</b> ช่วง · รวม <b>${fmt(total)}</b> จากคลิป ${fmt(D)} <span class="muted small">(ประหยัดเวลา ${Math.round((1-total/D)*100)}%)</span>`:'ไม่เจอช่วงที่มีการขยับ ลองเพิ่มความไว หรือลากกรอบใหม่ให้ครอบกล่องพอดี';
+  $('#tl').innerHTML=segs.map(([a,b])=>`<i style="left:${a/D*100}%;width:${Math.max(.25,(b-a)/D*100)}%"></i>`).join('')+'<span class="ph" id="ph"></span>';
+  $('#segs').innerHTML=segs.map(([a,b],i)=>`<button data-i="${i}" class="${i===cur?'on':''}">${i+1}. ${fmt(a)} <span class="muted">(${fmt(b-a)})</span></button>`).join('');
+  $('#segNo').textContent=segs.length?(cur>=0?`ช่วง ${cur+1}/${segs.length}`:`${segs.length} ช่วง`):'';
+}
+$('#segs').onclick=e=>{const b=e.target.closest('button');if(b)goSeg(+b.dataset.i,true)};
+$('#tl').onclick=e=>{const r=$('#tl').getBoundingClientRect(),t=(e.clientX-r.left)/r.width*(dur||0);let i=segs.findIndex(s=>t<=s[1]);if(i<0)i=segs.length-1;if(i>=0)goSeg(i,true)};
+function goSeg(i,play){if(!segs.length)return;cur=Math.max(0,Math.min(segs.length-1,i));setDraw(false);vid.currentTime=segs[cur][0];if(play){cutPlay=true;vid.play()}paint()}
+$('#playCut').onclick=()=>{if(!segs.length)return;cutPlay=true;setDraw(false);const t=vid.currentTime;let i=segs.findIndex(s=>t<s[1]);if(i<0)i=0;if(t<segs[i][0]||t>segs[i][1])vid.currentTime=segs[i][0];cur=i;vid.play();paint()};
+$('#prevSeg').onclick=()=>goSeg(cur<=0?0:cur-1,true);
+$('#nextSeg').onclick=()=>goSeg(cur+1,true);
+vid.addEventListener('pause',()=>{if(!exporting)cutPlay=false});
+/* ระหว่างเล่นแบบตัด: จบช่วงแล้วกระโดดไปช่วงถัดไปเอง */
+function watch(){const t=vid.currentTime,ph=$('#ph');if(ph&&dur)ph.style.left=(t/dur*100)+'%';
+  if(cutPlay&&segs.length){const i=segs.findIndex(s=>t<s[1]);
+    if(i<0){vid.pause();cutPlay=false;onCutEnd&&onCutEnd()}
+    else if(t<segs[i][0]-0.3){vid.currentTime=segs[i][0];if(i!==cur){cur=i;paint();onJump&&onJump()}}
+    else if(i!==cur){cur=i;paint()}}
+  if(vid.requestVideoFrameCallback&&!vid.paused)vid.requestVideoFrameCallback(watch);else requestAnimationFrame(watch)}
+requestAnimationFrame(watch);
+let onCutEnd=null,onJump=null;
+/* ความเร็วเล่น */
+const RATES=[1,1.5,2,3];let rateNow=1;
+$('#rates').innerHTML=RATES.map(r=>`<button data-r="${r}" aria-pressed="${r===1}">${r}x</button>`).join('');
+$('#rates').onclick=e=>{const b=e.target.closest('button');if(!b)return;rateNow=+b.dataset.r;vid.playbackRate=rateNow;$('#rates').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b))};
+
+/* ---------- บันทึกเป็นไฟล์: เล่นช่วงที่ตัดผ่าน canvas + เสียง แล้วอัดด้วย MediaRecorder ---------- */
+let exporting=false,xrate=1,rec=null,actx=null,asrc=null,adest=null;
+$('#xrates').innerHTML=[1,2].map(r=>`<button data-r="${r}" aria-pressed="${r===1}">${r}x</button>`).join('');
+$('#xrates').onclick=e=>{const b=e.target.closest('button');if(!b)return;xrate=+b.dataset.r;$('#xrates').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b))};
+$('#exportBtn').onclick=async()=>{
+  if(!segs.length||exporting)return;
+  if(typeof MediaRecorder==='undefined'){alertBox('เบราว์เซอร์นี้บันทึกไฟล์ไม่ได้ ใช้โหมด “เล่นเฉพาะช่วงที่หยิบ” แทน');return}
+  const c=document.createElement('canvas');c.width=vid.videoWidth;c.height=vid.videoHeight;const cx=c.getContext('2d');
+  const vs=c.captureStream(30);
+  try{if(!actx){actx=new (window.AudioContext||window.webkitAudioContext)();asrc=actx.createMediaElementSource(vid);adest=actx.createMediaStreamDestination();asrc.connect(adest);asrc.connect(actx.destination)}await actx.resume();adest.stream.getAudioTracks().forEach(t=>vs.addTrack(t))}catch(e){}
+  const types=['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm'];const mt=types.find(t=>MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t))||'';
+  const chunks=[];rec=new MediaRecorder(vs,mt?{mimeType:mt,videoBitsPerSecond:4e6}:{});rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
+  const total=segs.reduce((a,s)=>a+s[1]-s[0],0);let done=false;
+  exporting=true;$('#exportBtn').disabled=true;$('#exportStop').hidden=false;$('#xBox').hidden=false;setDraw(false);
+  const draw=()=>{if(!exporting)return;cx.drawImage(vid,0,0,c.width,c.height);
+    let el=0;for(let i=0;i<segs.length;i++){if(i<cur)el+=segs[i][1]-segs[i][0];else if(i===cur)el+=Math.max(0,vid.currentTime-segs[i][0])}
+    $('#xprog').style.width=(el/total*100).toFixed(1)+'%';$('#xTxt').textContent=`กำลังบันทึก ${fmt(el)} / ${fmt(total)} · ช่วง ${cur+1}/${segs.length}`;
+    requestAnimationFrame(draw)};
+  const finish=()=>{if(done)return;done=true;exporting=false;vid.pause();cutPlay=false;try{rec.state!=='inactive'&&rec.stop()}catch(e){}};
+  rec.onstop=()=>{const blob=new Blob(chunks,{type:mt.split(';')[0]||'video/webm'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    const d=new Date(),z=n=>String(n).padStart(2,'0');a.download=`jhunter-cut-${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}`+(blob.type.includes('mp4')?'.mp4':'.webm');document.body.appendChild(a);a.click();a.remove();
+    $('#xTxt').textContent=`บันทึกเสร็จ · ไฟล์ ${(blob.size/1048576).toFixed(1)} MB (ถ้าไม่เห็นไฟล์ ดูในแอปไฟล์ → ดาวน์โหลด)`;
+    $('#exportBtn').disabled=false;$('#exportStop').hidden=true;vid.playbackRate=rateNow;onCutEnd=onJump=null};
+  onCutEnd=finish;
+  onJump=()=>{try{rec.pause()}catch(e){}vid.addEventListener('seeked',()=>{try{rec.resume()}catch(e){}},{once:true})};
+  $('#exportStop').onclick=finish;
+  vid.playbackRate=xrate;vid.currentTime=segs[0][0];cur=0;await new Promise(r=>vid.addEventListener('seeked',r,{once:true}));
+  rec.start(1000);cutPlay=true;draw();try{await vid.play()}catch(e){finish()}
+};
+function alertBox(m){$('#xBox').hidden=false;$('#xTxt').textContent=m}
+try{const r=JSON.parse(ls.get('jhclip.roi'));if(r&&r.w)roi=r}catch(e){}
+</script>
+</body>
+</html>
