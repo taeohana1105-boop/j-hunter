@@ -1181,7 +1181,7 @@ function boardCard(b,c){
     <div class="progress"><i style="width:${(o/b.total*100).toFixed(1)}%"></i></div>
     <div class="muted small num">เหลือ ${U}/${b.total} ซอง · ฮิตเหลือ ${H}/${hitList(b).length}${b.closed?'':` · จดแล้ว ${o} ซอง`}</div>
     ${A?`<div class="adv-pill adv-${A.k}">${{go:'✅',ok:'🟡',wait:'⏳',no:'⛔'}[A.k]} ${A.k==='wait'&&A.w?`รออีกราว ${A.w} ซอง`:A.k==='go'?'น่าเล่น':A.k==='ok'?'พอเล่นได้':'ไม่แนะนำ · สับทั่ว'}</div>`:''}
-    <div class="row bc-acts">${b.closed?`<button class="btn sm" onclick="event.stopPropagation();reopenId('${b.id}')">เปิดกระดานอีกครั้ง</button>`:''}<button class="btn sm red" onclick="event.stopPropagation();delBoardId('${b.id}')">ลบกระดาน</button></div></div>`;
+    <div class="row bc-acts">${b.closed?`<button class="btn sm" onclick="event.stopPropagation();reopenId('${b.id}')">เปิดกระดานอีกครั้ง</button>`:''}<button class="btn sm" onclick="event.stopPropagation();exportBoard('${b.id}')">⬇︎ ดาวน์โหลด</button><button class="btn sm red" onclick="event.stopPropagation();delBoardId('${b.id}')">ลบกระดาน</button></div></div>`;
 }
 
 /* ===== สร้างกระดาน ===== */
@@ -1366,6 +1366,7 @@ function renderBoard(focus){setTimeout(()=>window.paintSync&&paintSync(),0);
     <div class="row" style="margin-top:12px">
       <button class="btn" onclick="undo()" ${b.log.length?'':'disabled'}>↶ ย้อนกลับ</button>
       ${b.closed?`<button class="btn" onclick="reopen()">เปิดกระดานอีกครั้ง</button>`:`<button class="btn gold" onclick="closeBoard()">ปิดกระดาน · บันทึกข้อมูลร้าน</button>`}
+      <button class="btn" onclick="exportBoard(S.cur)">⬇︎ ดาวน์โหลดกระดานนี้</button>
       <button class="btn red" onclick="delBoard()">ลบ</button>
     </div>
     <p class="note">วิธีจด: พิมพ์ “ซองที่ 11” เลือกซ้าย/ขวา กด Enter → พิมพ์เลขที่ออก เช่น 45 กด Enter → พร้อมจดซองถัดไป ซองที่เปิดแล้วจะออกจากการนับเหมือนในกล่องจริง</p>
@@ -1529,6 +1530,22 @@ function toast(m){let t=$('#toast');if(!t){t=document.createElement('div');t.id=
 let _ask=null;
 function ask(msg,yes,fn){_ask=fn;openSheet(`<h2>ยืนยัน</h2><p style="line-height:1.6">${msg}</p>
   <div class="row" style="margin-top:14px"><button class="btn" onclick="closeSheet()">ยกเลิก</button><button class="btn red" style="flex:1" onclick="closeSheet();_ask&&_ask()">${yes}</button></div>`)}
+/* ดาวน์โหลดทีละกระดาน (ไฟล์นี้นำเข้ากลับได้ที่ปุ่ม “นำเข้าไฟล์”) */
+function exportBoard(id){
+  const b=getB(id);if(!b)return;
+  const txt=JSON.stringify({boards:[b],shops:[b.shop],exported:new Date().toISOString(),app:'J Hunter'},null,1);
+  const d=new Date(),z=n=>String(n).padStart(2,'0');
+  const fn=`jhunter-board-${b.id}-${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}.json`;
+  let ok=false;try{const blob=new Blob([txt],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();a.remove();ok=true}catch(e){}
+  openSheet(`<h2>ดาวน์โหลดกระดาน</h2><p style="line-height:1.6">“${esc(b.name)}” · ${esc(b.shop)} · จด ${Object.keys(b.opened).length} ซอง${archOf(b).length?` · ${archOf(b).length+1} รอบ`:''}</p>
+  <p class="note">${ok?`ไฟล์ <b>${esc(fn)}</b> ถูกดาวน์โหลดแล้ว · บน iPad ดูได้ในแอป <b>ไฟล์ → ดาวน์โหลด</b> · `:''}ถ้าไฟล์ไม่มา ให้กด “คัดลอกข้อมูล” แล้ววางส่งในแชทแทนได้</p>
+  <textarea class="in" id="expTxt" rows="5" readonly style="font-family:var(--num);font-size:12px">${esc(txt)}</textarea>
+  <div class="row" style="margin-top:12px"><button class="btn" onclick="closeSheet()">ปิด</button>${navigator.share?`<button class="btn" onclick="shareBoard('${b.id}')">แชร์ไฟล์</button>`:''}<button class="btn gold" style="flex:1" onclick="copyExp()">คัดลอกข้อมูล</button></div>`);
+}
+async function shareBoard(id){const b=getB(id);if(!b)return;
+  const txt=JSON.stringify({boards:[b],shops:[b.shop],exported:new Date().toISOString(),app:'J Hunter'},null,1);
+  try{const f=new File([txt],`jhunter-board-${b.id}.json`,{type:'application/json'});
+    if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:b.name});else await navigator.share({title:b.name,text:txt})}catch(e){}}
 function exportData(){
   const txt=JSON.stringify(S);
   try{const blob=new Blob([txt],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);
